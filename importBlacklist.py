@@ -5,6 +5,7 @@ import re
 
 s3 = boto3.client('s3')
 dynamodb_resource = resource('dynamodb')
+bad_domains_table=os.environ.get('BAD_DOMAINS_TABLE')
 
 
 def add_item(table_name, col_dict):
@@ -34,7 +35,7 @@ def lambda_handler(event, context):
 
     # Add each domain to DynamoDB
     for item in res:
-        add_item('malicious-domains', {'domainName': item})
+        add_item(bad_domains_table, {'domainName': item})
         print('Domain {} added to database'.format(item))
 
 
