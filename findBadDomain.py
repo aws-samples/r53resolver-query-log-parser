@@ -8,8 +8,8 @@ s3 = boto3.client('s3')
 sns = boto3.client('sns')
 dynamodb_resource = resource('dynamodb')
 
-sns_topic=os.environ.get('SNS_TOPIC')
-bad_domains_table=os.environment.get('BAD_DOMAINS_TABLE')
+sns_topic_arn=os.environ.get('SNS_TOPIC_ARN')
+bad_domains_table=os.environ.get('BAD_DOMAINS_TABLE')
 
 
 def read_table_item(table_name, pk_name, pk_value):
@@ -39,7 +39,7 @@ def lambda_handler(event, context):
 
     try:
         #Test if query is in the list of bad domains
-        read_table_item('malicious-domains', 'domainName', queryName)['Item']
+        read_table_item(bad_domains_table, 'domainName', queryName)['Item']
         print("Malicious domain found: {}".format(queryName))
 
         #Create and send an SNS notification
@@ -49,7 +49,7 @@ def lambda_handler(event, context):
         message = {"Malicous domain": queryName, "Source IP": sourceIP, "Source VPC": vpcID}
 
         sns.publish(
-            TargetArn='arn:aws:sns:us-east-2:957487646002:dnslogs',
+            TargetArn=sns_topic_arn,
             Message=json.dumps({'default': json.dumps(message)}),
             MessageStructure='json'
         )
