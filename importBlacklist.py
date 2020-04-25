@@ -2,7 +2,6 @@ import boto3
 import os
 from boto3 import resource
 import re
-from botocore.exceptions import ClientError, EndpointConnectionError
 
 s3 = boto3.client('s3')
 dynamodb_resource = resource('dynamodb')
@@ -19,18 +18,21 @@ def add_item(table_name, col_dict):
 
 
 def lambda_handler(event, context):
+
+    # Download the bad domains list
     listObject = event['Records'][0]['s3']['object']['key']
     listBucket = event['Records'][0]['s3']['bucket']['name']
-
     s3.download_file(listBucket, listObject, '/tmp/listFile.txt')
-
     listFile = open('/tmp/listFile.txt', 'r')
     listContents = listFile.read()
     os.remove("/tmp/listFile.txt")
     print("Bad domain list file {} downloaded".format(listObject))
 
+    # Parse bad domains list for domains
     res = re.findall(r"(\b(?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+[a-z]{2,}\b)", listContents)
     print(res)
+
+    # Add each domain to DynamoDB
     for item in res:
         add_item('malicious-domains', {'domainName': item})
         print('Domain {} added to database'.format(item))

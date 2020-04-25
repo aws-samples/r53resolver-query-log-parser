@@ -2,10 +2,14 @@ import json
 import boto3
 import os
 from boto3 import resource
+from tld import get_fld
 
 s3 = boto3.client('s3')
 sns = boto3.client('sns')
 dynamodb_resource = resource('dynamodb')
+
+sns_topic=os.environ.get('SNS_TOPIC')
+bad_domains_table=os.environment.get('BAD_DOMAINS_TABLE')
 
 
 def read_table_item(table_name, pk_name, pk_value):
@@ -19,30 +23,32 @@ def read_table_item(table_name, pk_name, pk_value):
 
 
 def lambda_handler(event, context):
+
+    # Download the log file
     logObject = event['Records'][0]['s3']['object']['key']
     logBucket = event['Records'][0]['s3']['bucket']['name']
-
     s3.download_file(logBucket, logObject, '/tmp/logFile.txt')
     logFile = open('/tmp/logFile.txt', 'r')
     logContents = logFile.read()
     os.remove("/tmp/logFile.txt")
     print("Log file {} downloaded".format(logObject))
 
-    queryParts = json.loads(logContents)['query-name'].split(".")
-    queryName = queryParts[-2] + "." + queryParts[-1]
-    queryName2 = queryParts[-3] + "."
-    queryParts[-2] + "." + queryParts[-1]
+    # Get the first level domain from the log query field using the TLD libary
+    queryName = get_fld("http://"+json.loads(logContents)['query-name'])
+    print("Doing a lookup for {}".format(queryName))
 
     try:
-        record = read_table_item('malicious-domains', 'domainName', queryName)['Item']
+        #Test if query is in the list of bad domains
+        read_table_item('malicious-domains', 'domainName', queryName)['Item']
         print("Malicious domain found: {}".format(queryName))
 
+        #Create and send an SNS notification
         sourceIP = json.loads(logContents)['source-ip']
         vpcID = json.loads(logContents)['vpc-id']
 
         message = {"Malicous domain": queryName, "Source IP": sourceIP, "Source VPC": vpcID}
 
-        response = sns.publish(
+        sns.publish(
             TargetArn='arn:aws:sns:us-east-2:957487646002:dnslogs',
             Message=json.dumps({'default': json.dumps(message)}),
             MessageStructure='json'
