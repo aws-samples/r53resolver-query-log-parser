@@ -32,29 +32,41 @@ def lambda_handler(event, context):
     os.remove("/tmp/logFile.txt")
     print("Log file {} downloaded".format(logObject))
 
-    # Get the qery and its first level domain
-    queryName = json.loads(logContents)['query-name']
-    fldQuery = get_fld("http://" + queryName)
-    print("Full query: {}, First Level Domain: {}".format(queryName, fldQuery))
+    for record in json.loads(logContents)['Records']:
+        # Get the qery and its first level domain
+        queryName = record['query-name']
+        try:
+            fldQuery = get_fld("http://" + queryName)
+            print("Full query: {}, First Level Domain: {}".format(queryName, fldQuery))
 
-    try:
-        # Test if query is in the list of bad domains
-        read_table_item(bad_domains_table, 'domainName', fldQuery)['Item']
-        print("First level domain {} found in the list".format(fldQuery))
+            try:
+                # Test if query is in the list of bad domains
+                read_table_item(bad_domains_table, 'domainName', fldQuery)['Item']
+                print("First level domain {} found in the list".format(fldQuery))
 
-        # Create and send an SNS notification
-        sourceIP = json.loads(logContents)['source-ip']
-        vpcID = json.loads(logContents)['vpc-id']
+                # Create and send an SNS notification
+                sourceIP = record['source-ip']
+                vpcID = record['vpc-id']
 
-        message = {"Malicous domain": queryName, "Source IP": sourceIP, "Source VPC": vpcID}
+                message = {"Malicous domain": queryName, "Source IP": sourceIP, "Source VPC": vpcID}
 
-        sns.publish(
-            TargetArn=sns_topic_arn,
-            Message=json.dumps({'default': json.dumps(message)}),
-            MessageStructure='json'
-        )
-        print("SNS notification sent")
+                sns.publish(
+                    TargetArn=sns_topic_arn,
+                    Message=json.dumps({'default': json.dumps(message)}),
+                    MessageStructure='json'
+                )
+                print("SNS notification sent")
 
-    except:
-        print('Record {} not found in bad domains'.format(queryName))
+            except:
+                print('Record {} not found in bad domains'.format(queryName))
+
+
+        except Exception as ex:
+            # Skip if the Top Level Domain is not valid
+            if type(ex).__name__ == 'TldDomainNotFound':
+                print('{} is not using a valid top level domain. Skipping'.format(queryName))
+            else:
+                raise
+
+
 

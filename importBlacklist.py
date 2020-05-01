@@ -3,7 +3,6 @@ import os
 from boto3 import resource
 import re
 from tld import get_fld
-from botocore.exceptions import ClientError
 
 s3 = boto3.client('s3')
 dynamodb_resource = resource('dynamodb')
