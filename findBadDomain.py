@@ -8,6 +8,7 @@ s3 = boto3.client('s3')
 dynamodb_resource = resource('dynamodb')
 sns_topic_arn = os.environ.get('SNS_TOPIC_ARN')
 bad_domains_table = os.environ.get('BAD_DOMAINS_TABLE')
+notify_invalid = os.environ.get('NOTIFY_INVALID')
 
 
 def read_table_item(table_name, pk_name, pk_value):
@@ -46,15 +47,15 @@ def lambda_handler(event, context):
     logBucket = event['Records'][0]['s3']['bucket']['name']
     s3.download_file(logBucket, logObject, '/tmp/logFile.txt')
     logFile = open('/tmp/logFile.txt', 'r')
-    logContents = logFile.read()
+    logContents = logFile.read().splitlines()
     os.remove("/tmp/logFile.txt")
     print("Log file {} downloaded".format(logObject))
 
     """
     Iterate through log entries and compare first level domain for each query to the malicious domain list
     """
-    for record in json.loads(logContents)['Records']:
-        queryName = record['query-name']
+    for record in logContents:
+        queryName = json.loads(record)['query_name']
         print("*********************************")
         print("TESTING FOR {} ".format(queryName))
         try:
@@ -77,7 +78,8 @@ def lambda_handler(event, context):
             # Send notification if query TLD is invalid
             if type(ex).__name__ == 'TldDomainNotFound':
                 print('Invalid TLD for query {}'.format(queryName))
-                send_sns_notification(record, 'invalid')
+                if notify_invalid == 'True':
+                    send_sns_notification(record, 'invalid')
             else:
                 raise
 
