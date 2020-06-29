@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  route53-resolver-logging-sam
+
+  Sample SAM Template for route53-resolver-logging-sam
+Parameters: 
+  MaliciousDomainsS3Bucket: 
+    Description: S3 Bucket where malicious domains file resides
+    Default: tmak-rt53-resolver-logs
+    Type: String
+    MinLength: 3
+    MaxLength: 63
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+  MaliciousDomainsS3KeyName: 
+    Description: Name of file that contains malicious domain, including extension, example /folder1/subfolder/allowedlist.txt
+    Default: config/all-malicious-domains.txt
+    Type: String
+    MinLength: 4
+    MaxLength: 63
+    AllowedPattern: ^[a-zA-Z0-9!_.*'()-]+(\/[a-zA-Z0-9!_.*'()-]+)*$
+  DDBTableName:
+      Default: malicious-domains
+      Type: String
+  NotifyInvalid:
+    Default: NotifyInvalid
+    Description: SNS ARN for alerting
+    Type: String
+  S3BucketNameForRT53Logs:
+    Description: Name of S3 bucket where RT53 Resolver logs are to be stored
+    Default: rt53-resolver-query-logs
+    Type: String
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 900
+Resources:
+  # sns topics that the lambda uses to post alerts to
+  QueryAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: "rt53-rslvr-query-alert-topic"
+  # S3 Bucket
+  S3BucketRt53QueryLogs:
+    Type: AWS::S3::Bucket
+    BucketName: !Ref S3BucketNameForRT53Logs
+  ImportBlockedListFunc:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: import_blocked_list/
+      Handler: import_blocked_list.lambda_handler
+      Runtime: python3.7
+      Environment:
+        Variables:
+          S3_BUCKET_MALICOUS_DOMAINS: !Ref MaliciousDomainsS3Bucket
+          S3_OBJECT_MALICIOUS_DOMAINS: !Ref MaliciousDomainsS3KeyName
+          MALICIOUS_DOMAINS_TABLE: !Ref DDBTableName
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: !Ref DDBTableName
+      - S3ReadPolicy:
+          BucketName: !Ref MaliciousDomainsS3Bucket
+  FindBadDomainsFunc:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: find_bad_domain/
+      Handler: find_bad_domain.lambda_handler
+      Runtime: python3.7
+      Events:
+        S3Event:
+          Type: S3
+          Properties:
+            Bucket:
+              Ref: S3BucketRt53QueryLogs     # This must be the name of an S3 bucket declared in the same template file
+            Events: s3:ObjectCreated:*
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref QueryAlertTopic
+          NOTIFY_INVALID: !Ref NotifyInvalid
+          MALICIOUS_DOMAINS_TABLE: !Ref DDBTableName
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: !Ref DDBTableName
+      - S3ReadPolicy:
+          BucketName: !Ref MaliciousDomainsS3Bucket
+  BadDomainsDynamoDBTable: 
+    Type: AWS::Serverless::SimpleTable
+    Properties: 
+      TableName: !Ref DDBTableName
+      PrimaryKey: 
+        Name: domainName
+        Type: String
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 200
+        WriteCapacityUnits: 1000
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  
+  ImportBlockedListFunction:
+    Description: "ImportBlockedListFunc Lambda Function ARN"
+    Value: !GetAtt ImportBlockedListFunc.Arn
+  ImportBlockedListFuncIamRole:
+    Description: "Implicit IAM Role created for ImportBlockedListFuncRole function"
+    Value: !GetAtt ImportBlockedListFuncRole.Arn
+  FindBadDomainsFunction:
+    Description: "FindBadDomainsFunc Lambda Function ARN"
+    Value: !GetAtt FindBadDomainsFunc.Arn
+  FindBadDomainsFuncIamRole:
+    Description: "Implicit IAM Role created for FindBadDomainsFunc function"
+    Value: !GetAtt FindBadDomainsFuncRole.Arn
