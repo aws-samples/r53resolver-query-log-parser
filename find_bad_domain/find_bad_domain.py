@@ -3,85 +3,97 @@ import boto3
 import os
 from boto3 import resource
 from tld import get_fld
+import urllib.request
+import io
+import gzip
+import re
+import logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 s3 = boto3.client('s3')
-dynamodb_resource = resource('dynamodb')
+ddb = resource('dynamodb')
 sns_topic_arn = os.environ.get('SNS_TOPIC_ARN')
-bad_domains_table = os.environ.get('BAD_DOMAINS_TABLE')
+malicious_domains = os.environ.get('MALICIOUS_DOMAINS_TABLE')
 notify_invalid = os.environ.get('NOTIFY_INVALID')
 
-
-def read_table_item(table_name, pk_name, pk_value):
-    # Return item read by primary key
-
-    table = dynamodb_resource.Table(table_name)
+""" Function to validate if Top Level Domain is malicious - ie. does it exist in malicious domains DDB table?""" 
+def is_malicious_domain( pk_name, pk_value):
+    
+    logger.info("funct:: is_malicious_domain >> searching for [{}]".format(pk_value))
+    
+    table = ddb.Table(malicious_domains)
     response = table.get_item(Key={pk_name: pk_value})
-
-    return response
-
-
+    
+    return "Item" in response.keys()
+   
+""" Function to send notification that malicious domain has been detected - sent to SNS topic """
 def send_sns_notification(log_item, type):
-    # Send SNS notification for malicious or invalid query
-
-    sourceIP = log_item['source-ip']
-    vpcID = log_item['vpc-id']
-    queryName = log_item['query-name']
-
+    
+    logger.info("funct:: send_sns_notification >> received record is: [{}]".format(log_item))
+    
+    # convert to JSON
+    record = json.loads(log_item)
+    sourceIP = record.get('srcaddr')
+    vpcID = record.get('vpc_id')
+    queryName = record.get('query_name')
+    
     if type == 'malicious':
         message = {"Malicous domain found": queryName, "Source IP": sourceIP, "Source VPC": vpcID}
     if type == 'invalid':
         message = {"Invalid domain found": queryName, "Source IP": sourceIP, "Source VPC": vpcID}
-
+   
+    
     sns = boto3.client('sns')
-    response = sns.publish(
-        TargetArn=sns_topic_arn,
-        Message=json.dumps({'default': json.dumps(message)}),
-        MessageStructure='json'
-    )
-    return response
-
-
+    
+    try:
+        response = sns.publish(
+            TargetArn=sns_topic_arn,
+            Message=json.dumps({'default': json.dumps(message)}),
+            MessageStructure='json'
+        )
+    except Exception as ex:
+        logger.info("# Exception occured".format(ex))
+        
+    
+""" Main handler function """
 def lambda_handler(event, context):
-    # Download the log file and pull all log entries
+    
+    logger.info("funct:: lambda_handler >> received event is: [{}]".format(event))
+    
     logObject = event['Records'][0]['s3']['object']['key']
     logBucket = event['Records'][0]['s3']['bucket']['name']
-    s3.download_file(logBucket, logObject, '/tmp/logFile.txt')
-    logFile = open('/tmp/logFile.txt', 'r')
-    logContents = logFile.read().splitlines()
-    os.remove("/tmp/logFile.txt")
-    print("Log file {} downloaded".format(logObject))
 
-    """
-    Iterate through log entries and compare first level domain for each query to the malicious domain list
-    """
+    # get file from S3, decompress it and load it into memory one line at the time
+    s3.download_file(logBucket, logObject, '/tmp/logFile.gzip')
+    f = open("/tmp/logFile.gzip", "rb")
+    compressed_file = io.BytesIO(f.read())
+    decompressed_file = gzip.GzipFile(fileobj=compressed_file)
+    logContents = decompressed_file.read().splitlines()
+    os.remove("/tmp/logFile.gzip")
+    
+    #Iterate through log entries and compare first level domain for each query to the malicious domain list
     for record in logContents:
         queryName = json.loads(record)['query_name']
-        print("*********************************")
-        print("TESTING FOR {} ".format(queryName))
+        srcaddr = json.loads(record)['srcaddr']
+        
+        logger.info("testing for {} and srcaddr {} ".format(queryName, srcaddr))
         try:
-            # Pull first level domain frome each query
-            fldQuery = get_fld("http://" + queryName)
-            print("Query: {}, First Level Domain: {}".format(queryName, fldQuery))
-
+            fldQuery = get_fld("http://"+ queryName)
+            logger.info("Top Level Domain is {}  ".format(fldQuery))
+            
             try:
                 # Test if query first level domain is in the list of bad domains
-                read_table_item(bad_domains_table, 'domainName', fldQuery)['Item']
-                print("First level domain {} found in the list".format(fldQuery))
-
-                send_sns_notification(record, 'malicious')
-
-            except:
-                print('FLD for {} not found in bad domains'.format(queryName))
-
-
+                if is_malicious_domain( 'domainName', fldQuery):
+                    logger.info("Malicious Domain detected => {}".format(fldQuery))
+                    send_sns_notification(record, 'malicious')
+            except Exception as ex:
+                logger.info('Exception occured: '.format(ex))
         except Exception as ex:
-            # Send notification if query TLD is invalid
             if type(ex).__name__ == 'TldDomainNotFound':
-                print('Invalid TLD for query {}'.format(queryName))
-                if notify_invalid == 'True':
-                    send_sns_notification(record, 'invalid')
+                logger.info('Invalid TLD for query [{}]'.format(queryName))
+                #send_sns_notification(record, 'invalid')
             else:
-                raise
-
-
-
+                logger.info("# Exception occured".format(ex))
+    
+    

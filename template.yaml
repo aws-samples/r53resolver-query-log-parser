@@ -22,9 +22,12 @@ Parameters:
   DDBTableName:
       Default: malicious-domains
       Type: String
+  Rt53LogsSNSTopicName:
+      Default: rt53-logs-sns-topic
+      Type: String
   NotifyInvalid:
-    Default: NotifyInvalid
-    Description: SNS ARN for alerting
+    Default: Y
+    Description: When detecting invalid domain should notification be sent
     Type: String
   S3BucketNameForRT53Logs:
     Description: Name of S3 bucket where RT53 Resolver logs are to be stored
@@ -36,15 +39,16 @@ Globals:
   Function:
     Timeout: 900
 Resources:
+  # S3 Bucket
+  S3BucketRt53QueryLogs:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref S3BucketNameForRT53Logs
   # sns topics that the lambda uses to post alerts to
   QueryAlertTopic:
     Type: AWS::SNS::Topic
     Properties:
-      DisplayName: "rt53-rslvr-query-alert-topic"
-  # S3 Bucket
-  S3BucketRt53QueryLogs:
-    Type: AWS::S3::Bucket
-    BucketName: !Ref S3BucketNameForRT53Logs
+      DisplayName: !Ref Rt53LogsSNSTopicName
   ImportBlockedListFunc:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -83,7 +87,7 @@ Resources:
       - DynamoDBCrudPolicy:
           TableName: !Ref DDBTableName
       - S3ReadPolicy:
-          BucketName: !Ref MaliciousDomainsS3Bucket
+          BucketName: !Ref S3BucketNameForRT53Logs
   BadDomainsDynamoDBTable: 
     Type: AWS::Serverless::SimpleTable
     Properties: 
