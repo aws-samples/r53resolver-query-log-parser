@@ -4,6 +4,9 @@ from boto3 import resource
 import re
 from tld import get_fld
 from botocore.exceptions import ClientError
+import logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 s3 = boto3.client('s3')
 dynamodb_resource = resource('dynamodb')
@@ -13,6 +16,7 @@ bad_domains_table = os.environ.get('MALICIOUS_DOMAINS_TABLE')
     Parameters: malicious_domain_list: list, required
 """
 def add_items(malicious_domain_list):
+    logger.info("funct:: add_items started... ")
     table = dynamodb_resource.Table(bad_domains_table)
     with table.batch_writer() as batch:
         for domainFld in malicious_domain_list:
@@ -20,17 +24,18 @@ def add_items(malicious_domain_list):
                 batch.put_item(Item={'domainName': domainFld})
             except Exception as ex:
                 # implement proper exception handling
-                print('while processing add_items() excpetion occured:'.ex)
+                logger.info("while processing add_items() excpetion occured: {} ".format(ex))
                 raise
+    logger.info("funct:: add_items completed ... ")
         
 """Import Domain Blacklist  Lambda function """
 def lambda_handler(event, context):
-    
+    logger.info("funct:: lambda_handler started... ")
     # get the bad domains list from S3 
     listBucket = os.environ.get('S3_BUCKET_MALICOUS_DOMAINS') 
     listObject = os.environ.get('S3_OBJECT_MALICIOUS_DOMAINS') 
     s3.download_file(listBucket, listObject, '/tmp/listFile.txt')
-    print("Bad domain list file {} downloaded".format(listBucket +'/'+ listObject))
+    logger.info("Bad domain list file {} downloaded".format(listBucket +'/'+ listObject))
     
     # parse the bad domains list
     localFile = open('/tmp/listFile.txt', 'r')
@@ -49,15 +54,17 @@ def lambda_handler(event, context):
             domainsToAdd.append(fld)
         except Exception as ex:
             if type(ex).__name__ == 'TldDomainNotFound':
-                print('{} is not using a valid domain. Skipping'.format(item))
+                logger.info('{} is not using a valid domain. Skipping'.format(item))
             else:
                 raise
-    print("=> Total domains in file [{}], ".format(len(domainsToAdd)))
+    logger.info("=> Total domains in file [{}], ".format(len(domainsToAdd)))
   
     # quick way to get distinct domain names (list -> set -> list)
     finalBadList = list(set(domainsToAdd)) 
     
-    print("=> Unique domains in file [{}], ".format(len(finalBadList)))
+    logger.info(("=> Unique domains in file [{}], ".format(len(finalBadList)))
     
     add_items(finalBadList)
+
+    logger.info("funct:: lambda_handler completed ... ")
 
