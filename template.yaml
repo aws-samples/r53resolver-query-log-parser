@@ -1,9 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  route53-resolver-logging-sam
-
-  Sample SAM Template for route53-resolver-logging-sam
+  Sample SAM Template for Route 53 Resolver DNS Query log processing
 Parameters: 
   MaliciousDomainsS3Bucket: 
     Description: S3 Bucket where malicious domains file resides
@@ -22,35 +20,130 @@ Parameters:
   DDBTableName:
       Default: malicious-domains
       Type: String
-  Rt53LogsSNSTopicName:
-      Default: rt53-logs-sns-topic
-      Type: String
-  NotifyInvalid:
-    Default: Y
-    Description: When detecting invalid domain should notification be sent
+  ProcessorLambdaMemorySize:
+    Default: 512
+    Type: Number
+  ProcessorLambdaTimeout:
+    Default: 60
+    Type: Number
+  FirehoseS3Prefix:
     Type: String
-  S3BucketNameForRT53Logs:
-    Description: Name of S3 bucket where RT53 Resolver logs are to be stored
-    Default: rt53-resolver-query-logs
+    Default: firehose/
+    Description: "The S3 Key prefix for Kinesis Firehose."
+  FirehoseCompressionFormat:
     Type: String
-
+    Default: GZIP
+    AllowedValues: [GZIP]
+  FirehoseBufferingInterval:
+    Type: Number
+    Default: 60
+    MinValue: 60
+    MaxValue: 900
+    Description: "How long Firehose will wait before writing a new batch into S3"
+  FirehoseBufferingSize:
+    Type: Number
+    Default: 5
+    MinValue: 1
+    MaxValue: 128
+    Description: "Maximum batch size in MB"
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
     Timeout: 900
 Resources:
-  # S3 Bucket
-  S3BucketRt53QueryLogs:
+  DNSLogsDeliveryBucket:
     Type: AWS::S3::Bucket
+
+  DNSLogsStreamProcessFunction:
+    Type: AWS::Serverless::Function
+    FunctionName: RT53-KinesisStreamDNSLogsProcessor
     Properties:
-      BucketName: !Ref S3BucketNameForRT53Logs
-  # sns topics that the lambda uses to post alerts to
-  QueryAlertTopic:
-    Type: AWS::SNS::Topic
+      CodeUri: stream_processor/
+      Handler: stream_processor.lambda_handler
+      Runtime: python3.7
+      Timeout: !Ref ProcessorLambdaTimeout
+      MemorySize: !Ref ProcessorLambdaMemorySize
+      Environment:
+        Variables:
+          MALICIOUS_DOMAINS_TABLE: !Ref DDBTableName
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: !Ref DDBTableName
+      
+  
+  DeliveryStream:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    DependsOn:
+      - DNSLogsFirehosePolicy
     Properties:
-      DisplayName: !Ref Rt53LogsSNSTopicName
+      ExtendedS3DestinationConfiguration:
+        BucketARN: !Sub 'arn:aws:s3:::${DNSLogsDeliveryBucket}'
+        BufferingHints:
+          IntervalInSeconds: 60
+          SizeInMBs: 50
+        CompressionFormat: UNCOMPRESSED
+        Prefix: firehose/
+        RoleARN: !GetAtt DNSLogsFirehoseRole.Arn
+        ProcessingConfiguration:
+          Enabled: true
+          Processors:
+            - Parameters:
+                - ParameterName: LambdaArn
+                  ParameterValue: !GetAtt DNSLogsStreamProcessFunction.Arn 
+              Type: Lambda   
+  
+  
+  DNSLogsFirehoseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': !Ref 'AWS::AccountId'
+
+  DNSLogsFirehosePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      Roles:
+        - !Ref DNSLogsFirehoseRole
+      PolicyName: firehose_delivery_policy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:AbortMultipartUpload'
+              - 's3:GetBucketLocation'
+              - 's3:GetObject'
+              - 's3:ListBucket'
+              - 's3:ListBucketMultipartUploads'
+              - 's3:PutObject'
+            Resource:
+              - !GetAtt DNSLogsDeliveryBucket.Arn
+              - !Join 
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Ref DNSLogsDeliveryBucket
+                  - '*'
+          - Effect: Allow
+            Action:
+              - 'lambda:InvokeFunction'
+              - 'lambda:GetFunctionConfiguration'
+            Resource:
+              - !GetAtt DNSLogsStreamProcessFunction.Arn
+  
+
+  # Function to import list of maliciuos domains and store them in DynamoDB table 
   ImportBlockedListFunc:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    FunctionName: RT53-BlockedDomainsImporter
     Properties:
       CodeUri: import_blocked_list/
       Handler: import_blocked_list.lambda_handler
@@ -65,30 +158,8 @@ Resources:
           TableName: !Ref DDBTableName
       - S3ReadPolicy:
           BucketName: !Ref MaliciousDomainsS3Bucket
-  FindBadDomainsFunc:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-    Properties:
-      CodeUri: find_bad_domain/
-      Handler: find_bad_domain.lambda_handler
-      Runtime: python3.7
-      Events:
-        S3Event:
-          Type: S3
-          Properties:
-            Bucket:
-              Ref: S3BucketRt53QueryLogs     # This must be the name of an S3 bucket declared in the same template file
-            Events: s3:ObjectCreated:*
-      Environment:
-        Variables:
-          SNS_TOPIC_ARN: !Ref QueryAlertTopic
-          NOTIFY_INVALID: !Ref NotifyInvalid
-          MALICIOUS_DOMAINS_TABLE: !Ref DDBTableName
-      Policies:
-      - DynamoDBCrudPolicy:
-          TableName: !Ref DDBTableName
-      - S3ReadPolicy:
-          BucketName: !Ref S3BucketNameForRT53Logs
-  BadDomainsDynamoDBTable: 
+  
+  MaliciousDomainsDynamoDBTable: 
     Type: AWS::Serverless::SimpleTable
     Properties: 
       TableName: !Ref DDBTableName
@@ -98,6 +169,8 @@ Resources:
       ProvisionedThroughput: 
         ReadCapacityUnits: 200
         WriteCapacityUnits: 1000
+  
+ 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
@@ -109,9 +182,4 @@ Outputs:
   ImportBlockedListFuncIamRole:
     Description: "Implicit IAM Role created for ImportBlockedListFuncRole function"
     Value: !GetAtt ImportBlockedListFuncRole.Arn
-  FindBadDomainsFunction:
-    Description: "FindBadDomainsFunc Lambda Function ARN"
-    Value: !GetAtt FindBadDomainsFunc.Arn
-  FindBadDomainsFuncIamRole:
-    Description: "Implicit IAM Role created for FindBadDomainsFunc function"
-    Value: !GetAtt FindBadDomainsFuncRole.Arn
+  

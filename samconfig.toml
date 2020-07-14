@@ -2,11 +2,11 @@ version = 0.1
 [default]
 [default.deploy]
 [default.deploy.parameters]
-stack_name = "rt53-take4"
+stack_name = "rt53-kinesis1"
 s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-nl1y3wyeui7w"
-s3_prefix = "rt53-take4"
+s3_prefix = "rt53-kinesis1"
 region = "us-east-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "MaliciousDomainsS3Bucket=\"tmak-rt53-resolver-logs\" MaliciousDomainsS3KeyName=\"config/all-malicious-domains.txt\" DDBTableName=\"malicious-domains4\" Rt53LogsSNSTopicName=\"rt53-logs-sns-4\" NotifyInvalid=\"y\" S3BucketNameForRT53Logs=\"rt53-resolver-query-logs2\""
+parameter_overrides = "MaliciousDomainsS3Bucket=\"tmak-rt53-resolver-logs\" MaliciousDomainsS3KeyName=\"config/all-malicious-domains.txt\" DDBTableName=\"table5\" ProcessorLambdaMemorySize=\"512\" ProcessorLambdaTimeout=\"60\" FirehoseS3Prefix=\"firehose/\" FirehoseCompressionFormat=\"GZIP\" FirehoseBufferingInterval=\"60\" FirehoseBufferingSize=\"5\""
 
