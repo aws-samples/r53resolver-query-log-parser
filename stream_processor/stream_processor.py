@@ -76,10 +76,11 @@ def lambda_handler(event, context):
       output_record = {
         'recordId': record['recordId'],
         'result': 'Ok',
+        #data': base64.b64encode(checkedRecord)
         'data': base64.b64encode(checkedRecord.encode('utf-8') + b'\n').decode('utf-8')
       }
       output.append(output_record)
      
-    logger.info("output to Firehose {}".format(output))    
+    logger.info('Processing completed.  Number of records affected {} '.format(output))    
 
-    return output
+    return{'records': output}
