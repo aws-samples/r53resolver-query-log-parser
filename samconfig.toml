@@ -8,5 +8,5 @@ s3_prefix = "rt53-kinesis1"
 region = "us-east-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "MaliciousDomainsS3Bucket=\"tmak-rt53-resolver-logs\" MaliciousDomainsS3KeyName=\"config/all-malicious-domains.txt\" DDBTableName=\"table5\" ProcessorLambdaMemorySize=\"512\" ProcessorLambdaTimeout=\"60\" FirehoseS3Prefix=\"firehose/\" FirehoseCompressionFormat=\"GZIP\" FirehoseBufferingInterval=\"60\" FirehoseBufferingSize=\"5\""
+parameter_overrides = "DDBMaliciousDomainsTable=\"malicious-domains-list\" DDBTableRCU=\"500\" DDBTableWCU=\"500\" S3MaliciousDomainsBucket=\"tmak-rt53-resolver-logs\" S3MaliciousDomainsFilePath=\"config/all-malicious-domains.txt\" S3LogsOutputBucketName=\"dns-logs-output\" StreamProcessorMemorySize=\"256\" StreamProcessorTimeout=\"120\" StreamOutput3Prefix=\"dns-query-logs/!{timestamp:yyyy/MM/dd}\" StreamOutputErrorPrefix=\"delivery-failures/!{firehose:error-output-type}/!{timestamp:yyyy/MM/dd}\" StreamOutputCompressionFormat=\"GZIP\" StreamBufferingInterval=\"60\" StreamBufferSize=\"5\""
 

@@ -3,72 +3,111 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   Sample SAM Template for Route 53 Resolver DNS Query log processing
 Parameters: 
-  MaliciousDomainsS3Bucket: 
+  DDBMaliciousDomainsTable:
+    Description: DynamoDB Table to store list of malicious domains
+    Default: malicious-domains-list
+    Type: String
+  DDBTableRCU:
+    Description: DynamoDB Table Read Capacity Units 
+    Type: Number
+    Default: 500
+  DDBTableWCU:
+    Description: DynamoDB Table Write Capacity Units 
+    Type: Number
+    Default: 500
+  S3MaliciousDomainsBucket: 
     Description: S3 Bucket where malicious domains file resides
     Default: tmak-rt53-resolver-logs
     Type: String
     MinLength: 3
     MaxLength: 63
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
-  MaliciousDomainsS3KeyName: 
+  S3MaliciousDomainsFilePath: 
     Description: Name of file that contains malicious domain, including extension, example /folder1/subfolder/allowedlist.txt
     Default: config/all-malicious-domains.txt
     Type: String
     MinLength: 4
     MaxLength: 63
     AllowedPattern: ^[a-zA-Z0-9!_.*'()-]+(\/[a-zA-Z0-9!_.*'()-]+)*$
-  DDBTableName:
-      Default: malicious-domains
-      Type: String
-  ProcessorLambdaMemorySize:
-    Default: 512
-    Type: Number
-  ProcessorLambdaTimeout:
-    Default: 60
-    Type: Number
-  FirehoseS3Prefix:
+  S3LogsOutputBucketName:
+    Description: Name for the S3 bucket for DNS Query Logs output
     Type: String
-    Default: firehose/
-    Description: "The S3 Key prefix for Kinesis Firehose."
-  FirehoseCompressionFormat:
+    Default: dns-logs-output
+    MinLength: 3
+    MaxLength: 63
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+  StreamProcessorMemorySize:
+    Description: Memmory allocation for Stream Processing Lambda Function
+    Default: 256
+    Type: Number
+  StreamProcessorTimeout:
+    Description: Timeout for Stream Processing Lambda Function
+    Default: 120
+    Type: Number
+  StreamOutput3Prefix:
+    Type: String
+    Default: dns-query-logs/!{timestamp:yyyy/MM/dd}
+    Description: S3 prefix for Kinesis output
+  StreamOutputErrorPrefix:
+    Type: String
+    Default: dns-query-logs/!{timestamp:yyyy/MM/dd}
+    Description: S3 prefix for Kinesis output
+    Default: delivery-failures/!{firehose:error-output-type}/!{timestamp:yyyy/MM/dd}
+  StreamOutputCompressionFormat:
+    Description: Compression that Firehose will use to output logs to S3
     Type: String
     Default: GZIP
     AllowedValues: [GZIP]
-  FirehoseBufferingInterval:
+  StreamBufferingInterval:
+    Description: Amount of time that Firehose will wait to output logs to S3
     Type: Number
     Default: 60
     MinValue: 60
     MaxValue: 900
-    Description: "How long Firehose will wait before writing a new batch into S3"
-  FirehoseBufferingSize:
+  StreamBufferSize:
+    Description: Amount of logs data that Firehose will buffer before outputting 
     Type: Number
     Default: 5
     MinValue: 1
     MaxValue: 128
-    Description: "Maximum batch size in MB"
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
     Timeout: 900
 Resources:
+  # DynamoDB table to store list of malicious domains
+  MaliciousDomainsDynamoDBTable: 
+    Type: AWS::Serverless::SimpleTable
+    Properties: 
+      TableName: !Ref DDBMaliciousDomainsTable
+      PrimaryKey: 
+        Name: domainName
+        Type: String
+      ProvisionedThroughput: 
+        ReadCapacityUnits: !Ref DDBTableRCU
+        WriteCapacityUnits: !Ref DDBTableWCU
+  # S3 Bucket for FH to store the logs
   DNSLogsDeliveryBucket:
     Type: AWS::S3::Bucket
-
-  DNSLogsStreamProcessFunction:
+    Properties:
+      AccessControl: Private
+      BucketName: !Ref S3LogsOutputBucketName
+  # Lambda Function that will be invoked by Firehose and in turn will check if queried domain is malicious
+  StreamInlineProcessingFunction:
     Type: AWS::Serverless::Function
     FunctionName: RT53-KinesisStreamDNSLogsProcessor
     Properties:
       CodeUri: stream_processor/
       Handler: stream_processor.lambda_handler
       Runtime: python3.7
-      Timeout: !Ref ProcessorLambdaTimeout
-      MemorySize: !Ref ProcessorLambdaMemorySize
+      Timeout: !Ref StreamProcessorTimeout
+      MemorySize: !Ref StreamProcessorMemorySize
       Environment:
         Variables:
-          MALICIOUS_DOMAINS_TABLE: !Ref DDBTableName
+          MALICIOUS_DOMAINS_TABLE: !Ref DDBMaliciousDomainsTable
       Policies:
       - DynamoDBCrudPolicy:
-          TableName: !Ref DDBTableName
+          TableName: !Ref DDBMaliciousDomainsTable
       
   
   DeliveryStream:
@@ -79,17 +118,18 @@ Resources:
       ExtendedS3DestinationConfiguration:
         BucketARN: !Sub 'arn:aws:s3:::${DNSLogsDeliveryBucket}'
         BufferingHints:
-          IntervalInSeconds: 60
+          IntervalInSeconds: !Ref StreamBufferingInterval
           SizeInMBs: 50
-        CompressionFormat: UNCOMPRESSED
-        Prefix: firehose/
+        CompressionFormat: !Ref StreamOutputCompressionFormat
+        Prefix: !Ref StreamOutput3Prefix
+        ErrorOutputPrefix: !Ref StreamOutputErrorPrefix
         RoleARN: !GetAtt DNSLogsFirehoseRole.Arn
         ProcessingConfiguration:
           Enabled: true
           Processors:
             - Parameters:
                 - ParameterName: LambdaArn
-                  ParameterValue: !GetAtt DNSLogsStreamProcessFunction.Arn 
+                  ParameterValue: !GetAtt StreamInlineProcessingFunction.Arn 
               Type: Lambda   
   
   
@@ -137,7 +177,7 @@ Resources:
               - 'lambda:InvokeFunction'
               - 'lambda:GetFunctionConfiguration'
             Resource:
-              - !GetAtt DNSLogsStreamProcessFunction.Arn
+              - !GetAtt StreamInlineProcessingFunction.Arn
   
 
   # Function to import list of maliciuos domains and store them in DynamoDB table 
@@ -150,25 +190,16 @@ Resources:
       Runtime: python3.7
       Environment:
         Variables:
-          S3_BUCKET_MALICOUS_DOMAINS: !Ref MaliciousDomainsS3Bucket
-          S3_OBJECT_MALICIOUS_DOMAINS: !Ref MaliciousDomainsS3KeyName
-          MALICIOUS_DOMAINS_TABLE: !Ref DDBTableName
+          S3_BUCKET_MALICOUS_DOMAINS: !Ref S3MaliciousDomainsBucket
+          S3_OBJECT_MALICIOUS_DOMAINS: !Ref S3MaliciousDomainsFilePath
+          MALICIOUS_DOMAINS_TABLE: !Ref DDBMaliciousDomainsTable
       Policies:
       - DynamoDBCrudPolicy:
-          TableName: !Ref DDBTableName
+          TableName: !Ref DDBMaliciousDomainsTable
       - S3ReadPolicy:
-          BucketName: !Ref MaliciousDomainsS3Bucket
+          BucketName: !Ref S3MaliciousDomainsBucket
   
-  MaliciousDomainsDynamoDBTable: 
-    Type: AWS::Serverless::SimpleTable
-    Properties: 
-      TableName: !Ref DDBTableName
-      PrimaryKey: 
-        Name: domainName
-        Type: String
-      ProvisionedThroughput: 
-        ReadCapacityUnits: 200
-        WriteCapacityUnits: 1000
+  
   
  
 Outputs:
@@ -176,10 +207,20 @@ Outputs:
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   
-  ImportBlockedListFunction:
+  ImportBlockedListFunctionOutput:
     Description: "ImportBlockedListFunc Lambda Function ARN"
     Value: !GetAtt ImportBlockedListFunc.Arn
-  ImportBlockedListFuncIamRole:
-    Description: "Implicit IAM Role created for ImportBlockedListFuncRole function"
-    Value: !GetAtt ImportBlockedListFuncRole.Arn
+  StreamInlineProcessingFunctionOutput:
+    Description: "Lambda Function used by Firehose to check if domains are malicious or not"
+    Value: !GetAtt StreamInlineProcessingFunction.Arn
+  KinesisFirehosestreamARNOutput:
+    Description: "Kinesis Firehose Delivery Stream for DNS Logs"
+    Value: !GetAtt DeliveryStream.Arn
+  DynamoDBTableOutput:
+    Description: "DynamoDB table for maintaining list of malicious domains"
+    Value: !Ref MaliciousDomainsDynamoDBTable
+  S3BucketDNSLogsOutput:
+    Description: "S3 Bucket where DNS Logs are stored"
+    Value: !Ref DNSLogsDeliveryBucket
+  
   

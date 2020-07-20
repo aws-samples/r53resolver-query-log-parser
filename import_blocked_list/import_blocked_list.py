@@ -62,7 +62,7 @@ def lambda_handler(event, context):
     # quick way to get distinct domain names (list -> set -> list)
     finalBadList = list(set(domainsToAdd)) 
     
-    logger.info(("=> Unique domains in file [{}], ".format(len(finalBadList)))
+    logger.info("=> Unique domains in file [{}], ".format(len(finalBadList)))
     
     add_items(finalBadList)
 
