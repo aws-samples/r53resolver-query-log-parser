@@ -2,16 +2,23 @@
 
 This project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
 
+- DeliveryStream (Firehose) - this will be target for RT53 resolver to output the logs 
 - import_blocked_list - Lambda function which imports names of 'bad' top level domains
-- find_bad_domain - Lambda function which processed RT53 Resolver logs and checks if there are any bad domains that were queried
+- stream_processor - Lambda function used by Kinesis Firehose to check if DNS loge entry (domain) is malicious or not
 - tests - Work in Progress 
-- template.yaml - A template that defines the application's AWS resources.
+- template.yaml - A Seerverless Application Module (SAM) template that defines the application's AWS resources.
 
-The application uses several AWS resources, including Lambda functions and an API Gateway API. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
-git
+The application uses several AWS resources, including Lambda functions, DynamoDB table and Kinesis Firehose data stream. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
+
+## Pre-requisites 
+
+Before you deploy SAM template you will need to create S3 bucket and store the file with list of malicious domains. For this sample application we obtained list of malicious domain from <INSERT URL HERE> 
+      
+> Optional: You can also modify `import_blocked_list` Lambda function to download the file from location other than S3. i.e using CURL or similar.
+
 ## Deploy the sample application
 
-The Serverless Application Model Command Line Interface (SAM CLI) is an extension of the AWS CLI that adds functionality for building and testing Lambda applications. It uses Docker to run your functions in an Amazon Linux environment that matches Lambda. It can also emulate your application's build environment and API.
+The Serverless Application Model Command Line Interface (SAM CLI) is an extension of the AWS CLI that adds functionality for building and testing Lambda applications. 
 
 To use the SAM CLI, you need the following tools.
 
