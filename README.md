@@ -1,6 +1,12 @@
 # route53-resolver-logging-sam
 
-This project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
+This project is Route53 Resolver DNS query logs processing Serverless Application Module (SAM) intended to detect DNS queries to malicious domains. Route 53 Resolver logs contains information about the queries, such as the following:
+• Route 53 edge location that responded to the DNS query
+• Domain or subdomain that was requested
+• DNS record type, such as A or AAAA
+• DNS response code, such as NoError or ServFail
+This project will (1) ingest Route53 DNS logs into Kinesis Firehose data stream (2) perform inline processing using AWS Lambda to check if DNS query was to malicious domain or not (3) output the modified DNS query reecords, indicating if queried DNS is malicious, to S3 bucket for further processing (i.e Athena)
+Project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
 
 - DeliveryStream (Firehose) - this will be target for RT53 resolver to output the logs 
 - import_blocked_list - Lambda function which imports names of 'bad' top level domains
