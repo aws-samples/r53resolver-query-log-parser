@@ -84,27 +84,26 @@ sam deploy --guided
 The first command will build the source of the application. The second command will package and deploy application to AWS, with a series of prompts:
 
 | Property                | Description           | Default Value  |
-| ----------------------- |:---------------------:| --------------:|
-| Stack Nam               | The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project named         | $1600          |
+| ----------------------- |---------------------| --------------:|
+| **Stack Name**          | The name of the stack to deploy to CloudFormation. | $1600          |
+| **AWS Region**| The AWS region you want to deploy your app to.|
+| **DDBMaliciousDomainsTable**| Name of DynamoDB Table to store list of malicious domain | [malicious-domains-list] 
+| **DDBTableRCU**| Read Capacity Units for Dynamo table |  [500]  
+| **DDBTableWCU**| Wite Capacity Units for Dynamo table |   [500]: 
+| **S3MaliciousDomainsBucket**| S3 Bucket where malicious domains file is stored (see Pre-requisites section) | no default 
+| **S3MaliciousDomainsFilePath**|  Path to file containing maliciuous domains| [config/all-malicious-domains.txt]: 
+| **S3LogsOutputBucketName**|  S3 Bucket for Kinesis Firehose to output logs | [dns-logs-output]: 
+| **StreamProcessorMemorySize**| Inline Lambda function memory allocation | [256]: 
+| **StreamProcessorTimeout**|  Inline Lambda function timeout | [120]: 
+| **StreamOutput3Prefix**|  Prefix for Kinesis Firehose Output | [dns-query-logs/!{timestamp:yyyy/MM/dd}]: 
+| **StreamOutputErrorPrefix**|  Prefix for Kinesis Firehose Output, for errors |[delivery-failures/!{firehose:error-output-type}/!{timestamp:yyyy/MM/dd}]: 
+| **StreamOutputCompressionFormat**|  Kinesis Firehose output formrmat | [GZIP]: 
+| **StreamBufferingInterval**|  Kinesis Firehose buffer interval in seconds | [60]: 
+| **StreamBufferSize**|  Kinesis Firehose buffer size in MB| [5]: 
+| **Confirm changes before deploy**| If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.| Yes
+| **Allow SAM CLI IAM role creation**| This AWS SAM creates AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modified IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command. | Yes
+| **Save arguments to samconfig.toml**| If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.| Yes
 
-* ****: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
-* **AWS Region**: The AWS region you want to deploy your app to.
-* **DDBMaliciousDomainsTable**: Name of DynamoDB Table to store list of malicious domain - default is [malicious-domains-list] 
-* **DDBTableRCU**: Read Capacity Units for Dynamo table - default is  [500]  
-* **DDBTableWCU**: Wite Capacity Units for Dynamo table - default is   [500]: 
-* **S3MaliciousDomainsBucket**: S3 Bucket where malicious domains file is stored (see Pre-requisites section) - no default 
-* **S3MaliciousDomainsFilePath**:  [config/all-malicious-domains.txt]: 
-* **S3LogsOutputBucketName**:  [dns-logs-output]: 
-* **StreamProcessorMemorySize**:  [256]: 
-* **StreamProcessorTimeout**:  [120]: 
-* **StreamOutput3Prefix**:  [dns-query-logs/!{timestamp:yyyy/MM/dd}]: 
-* **StreamOutputErrorPrefix**:  [delivery-failures/!{firehose:error-output-type}/!{timestamp:yyyy/MM/dd}]: 
-* **StreamOutputCompressionFormat**:  [GZIP]: 
-* **StreamBufferingInterval**:  [60]: 
-* **StreamBufferSize**:  [5]: 
-* **Confirm changes before deploy**: If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.
-* **Allow SAM CLI IAM role creation**: Many AWS SAM templates, including this example, create AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modified IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command.
-* **Save arguments to samconfig.toml**: If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.
 
 You can find your API Gateway Endpoint URL in the output values displayed after deployment.
 
