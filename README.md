@@ -76,8 +76,8 @@ To build and deploy your application for the first time, run the following in yo
 ## Deploy SAM  
 Once you have pre-requisites you can deploy the RT53 Resolver logging SAM application by:
 
-```bash
-@@route53resolverLogging tmak$ sam build@@ 
+```diff
+@@sam build@@
 
 Building function 'StreamInlineProcessingFunction'
 Running PythonPipBuilder:ResolveDependencies
