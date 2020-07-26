@@ -74,14 +74,20 @@ To build and deploy your application for the first time, run the following in yo
 
 
 ## Deploy SAM  
+Once you have pre-requisites you can deploy the RT53 Resolver logging SAM application by:
+
 ```bash
 sam build 
 sam deploy --guided
 ```
 
-The first command will build the source of your application. The second command will package and deploy your application to AWS, with a series of prompts:
+The first command will build the source of the application. The second command will package and deploy application to AWS, with a series of prompts:
 
-* **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
+| Property                | Description           | Default Value  |
+| ----------------------- |:---------------------:| --------------:|
+| Stack Nam               | The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project named         | $1600          |
+
+* ****: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
 * **AWS Region**: The AWS region you want to deploy your app to.
 * **DDBMaliciousDomainsTable**: Name of DynamoDB Table to store list of malicious domain - default is [malicious-domains-list] 
 * **DDBTableRCU**: Read Capacity Units for Dynamo table - default is  [500]  
