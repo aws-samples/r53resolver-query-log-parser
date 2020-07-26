@@ -106,12 +106,12 @@ sam deploy --guided
 ```
 
 | Property                | Description           | Default Value  |
-| ----------------------- |---------------------| --------------:|
-| **Stack Name**          | The name of the stack to deploy to CloudFormation. | $1600          |
-| **AWS Region**| The AWS region you want to deploy your app to.|
-| **DDBMaliciousDomainsTable**| Name of DynamoDB Table to store list of malicious domain | [malicious-domains-list] 
-| **DDBTableRCU**| Read Capacity Units for Dynamo table |  [500]  
-| **DDBTableWCU**| Wite Capacity Units for Dynamo table |   [500]: 
+| ----------------------- |---------------------| :--------------:|
+| **Stack Name**          | The name of the stack to deploy to CloudFormation. | give it unique name          |
+| **AWS Region**| The AWS region you want to deploy your app to.| us-east-1 |
+| **DDBMaliciousDomainsTable**| Name of DynamoDB Table to store list of malicious domain | `malicious-domains-list` |
+| **DDBTableRCU**| Read Capacity Units for Dynamo table [need to lower this one] |  `500` | 
+| **DDBTableWCU**| Wite Capacity Units for Dynamo table [need to lower this one] |   `500` | 
 | **S3MaliciousDomainsBucket**| S3 Bucket where malicious domains file is stored (see Pre-requisites section) | no default 
 | **S3MaliciousDomainsFilePath**|  Path to file containing maliciuous domains| [config/all-malicious-domains.txt]: 
 | **S3LogsOutputBucketName**|  S3 Bucket for Kinesis Firehose to output logs | [dns-logs-output]: 
