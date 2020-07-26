@@ -58,7 +58,7 @@ The application uses several AWS resources, including Lambda functions, DynamoDB
 
 ## Pre-requisites 
 
-###  SAM CLI
+####  SAM CLI
 The Serverless Application Model Command Line Interface (SAM CLI) is an extension of the AWS CLI that adds functionality for building and testing Lambda applications. 
 
 To use the SAM CLI, you need the following tools.
@@ -66,7 +66,7 @@ To use the SAM CLI, you need the following tools.
 * SAM CLI - [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
 * [Python 3 installed](https://www.python.org/downloads/)
 
-### Malicous Domains List
+#### Malicous Domains List
 You will need to create S3 bucket and store the file with list of malicious domains. For this sample application we obtained list of malicious domain from [curated list of awesome Threat Intelligence resources](https://github.com/hslatman/awesome-threat-intelligence). For the testing we used https://www.malwaredomainlist.com/mdl.php
       
 > Optional: You can also modify `import_blocked_list` Lambda function to download the file from location other than S3. i.e using CURL or similar.
@@ -127,11 +127,15 @@ sam deploy --guided
 | **Save arguments to samconfig.toml**| If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.| `Y` |
 
 
-You can find your API Gateway Endpoint URL in the output values displayed after deployment.
+You can find output values displayed after deployment in AWS Console under Cloudformation Stacks.
+![alt text](https://github.com/spanningt/route53resolverLogging/raw/master/sam-output.png "SAM Output Values")
 
-## Use the SAM CLI to build and test locally
+ 
+## Populate `malicious-domains` DynamoDB Table
 
-Build your application with the `sam build --use-container` command.
+Navigate to AWS Console and go to Lamba. Find ImportBlockedListFunctionOutput	function it will be named `cfnStackName-ImportBlockedListFunc-XXXXXXXXX`
+
+> Note: before you run Lambda function you MUST complete pre-requisite section unde `Malicous Domains List`
 
 ```bash
 route53-resolver-logging-sam$ sam build --use-container
