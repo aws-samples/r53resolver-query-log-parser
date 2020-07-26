@@ -127,47 +127,23 @@ sam deploy --guided
 | **Save arguments to samconfig.toml**| If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.| `Y` |
 
 
+
 You can find output values displayed after deployment in AWS Console under Cloudformation Stacks.
+
+
 ![alt text](https://github.com/spanningt/route53resolverLogging/raw/master/sam-output.png "SAM Output Values")
 
  
 ## Populate `malicious-domains` DynamoDB Table
 
-Navigate to AWS Console and go to Lamba. Find ImportBlockedListFunctionOutput	function it will be named `cfnStackName-ImportBlockedListFunc-XXXXXXXXX`
+Navigate to AWS Console and go to Lamba. Find *ImportBlockedListFunctionOutput* Lambda function it will be named `cfnStackName-ImportBlockedListFunc-XXXXXXXXX`
 
-> Note: before you run Lambda function you MUST complete pre-requisite section unde `Malicous Domains List`
+> Note: before you run Lambda function you MUST complete pre-requisite section as described under *Malicous Domains List* section
 
-```bash
-route53-resolver-logging-sam$ sam build --use-container
-```
+Once *ImportBlockedListFunctionOutput* has completed, navigate to DynamoDB console. Find `malicious-domains-list` table and make sure that in fact it has been populated with data.
 
-The SAM CLI installs dependencies defined in `hello_world/requirements.txt`, creates a deployment package, and saves it in the `.aws-sam/build` folder.
+## Create DNS Resolver Logs and send them to Kinesis Firehose
 
-Test a single function by invoking it directly with a test event. An event is a JSON document that represents the input that the function receives from the event source. Test events are included in the `events` folder in this project.
-
-Run functions locally and invoke them with the `sam local invoke` command.
-
-```bash
-route53-resolver-logging-sam$ sam local invoke HelloWorldFunction --event events/event.json
-```
-
-The SAM CLI can also emulate your application's API. Use the `sam local start-api` to run the API locally on port 3000.
-
-```bash
-route53-resolver-logging-sam$ sam local start-api
-route53-resolver-logging-sam$ curl http://localhost:3000/
-```
-
-The SAM CLI reads the application template to determine the API's routes and the functions that they invoke. The `Events` property on each function's definition includes the route and method for each path.
-
-```yaml
-      Events:
-        HelloWorld:
-          Type: Api
-          Properties:
-            Path: /hello
-            Method: get
-```
 
 ## Add a resource to your application
 The application template uses AWS Serverless Application Model (AWS SAM) to define application resources. AWS SAM is an extension of AWS CloudFormation with a simpler syntax for configuring common serverless application resources such as functions, triggers, and APIs. For resources not included in [the SAM specification](https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md), you can use standard [AWS CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-template-resource-type-ref.html) resource types.
