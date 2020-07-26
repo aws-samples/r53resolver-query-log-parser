@@ -77,14 +77,14 @@ To build and deploy your application for the first time, run the following in yo
 Once you have pre-requisites you can deploy the RT53 Resolver logging SAM application by:
 
 ```diff
-@@sam build@@
+@@ sam build @@
 
-Building function 'StreamInlineProcessingFunction'
-Running PythonPipBuilder:ResolveDependencies
-Running PythonPipBuilder:CopySource
-Building function 'ImportBlockedListFunc'
-Running PythonPipBuilder:ResolveDependencies
-Running PythonPipBuilder:CopySource
+# Building function 'StreamInlineProcessingFunction'
+# Running PythonPipBuilder:ResolveDependencies
+# Running PythonPipBuilder:CopySource
+# Building function 'ImportBlockedListFunc'
+# Running PythonPipBuilder:ResolveDependencies
+# Running PythonPipBuilder:CopySource
 
 + Build Succeeded
 
