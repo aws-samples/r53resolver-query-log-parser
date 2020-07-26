@@ -1,6 +1,6 @@
 # route53-resolver-logging-sam
 
-This project is Route53 Resolver DNS query logs processing Serverless Application Module (SAM) intended to detect DNS queries to malicious domains. Route 53 Resolver logs contains information about the queries, such as the following:
+This project is intended to detect DNS queries to malicious domains using [Amazon Route 53] (https://aws.amazon.com/route53/) Resolver DNS query logs. Project is packaged as Serverless Application Module (SAM) . Route 53 Resolver logs contains information about the queries, such as the following:
 - Route 53 edge location that responded to the DNS query
 - Domain or subdomain that was requested
 - DNS record type, such as A or AAAA
