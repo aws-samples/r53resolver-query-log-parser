@@ -6,6 +6,31 @@ This project is intended to detect DNS queries to malicious domains using [Amazo
 - DNS record type, such as A or AAAA
 - DNS response code, such as NoError or ServFail
 
+Sample DNS log record:
+```json
+{
+      "version":"1.000000",
+      "account_id":"99999999999",
+      "region":"us-east-1",
+      "vpc_id":"vpc-h456k56s57w78e76",
+      "query_timestamp":"2020-05-22T03:25:36Z",
+      "query_name":"223.0.2.1.in-addr.arpa.",
+      "query_type":"PTR",
+      "query_class":"IN",
+      "rcode":"NOERROR",
+      "answers":[{
+            "Address":"ip-7-7-7-223.ec2.internal. ",
+            "Type":"PTR",
+            "Class":"IN"
+      }],
+      "srcaddr":"9.9.9.70",
+      "srcport":"60306",
+      "srcids":[
+            "i-0f19ert0572c3c54a"
+      ]
+}
+```
+
 This project will 
 1. ingest Route53 DNS logs into Kinesis Firehose data stream 
 2. perform inline processing using AWS Lambda to check if DNS query was to malicious domain or not 
