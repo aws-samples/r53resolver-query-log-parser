@@ -77,8 +77,24 @@ To build and deploy your application for the first time, run the following in yo
 Once you have pre-requisites you can deploy the RT53 Resolver logging SAM application by:
 
 ```bash
-sam build 
-sam deploy --guided
+@@route53resolverLogging tmak$ sam build@@ 
+
+Building function 'StreamInlineProcessingFunction'
+Running PythonPipBuilder:ResolveDependencies
+Running PythonPipBuilder:CopySource
+Building function 'ImportBlockedListFunc'
+Running PythonPipBuilder:ResolveDependencies
+Running PythonPipBuilder:CopySource
+
++ Build Succeeded
+
+! Built Artifacts  : .aws-sam/build
+! Built Template   : .aws-sam/build/template.yaml
+
+! Commands you can use next
+! =========================
+! [*] Invoke Function: sam local invoke
+! [*] Deploy: sam deploy --guided
 ```
 
 The first command will build the source of the application. The second command will package and deploy application to AWS, with a series of prompts:
