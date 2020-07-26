@@ -74,11 +74,14 @@ To build and deploy your application for the first time, run the following in yo
 
 
 ## Deploy SAM  
-Once you have pre-requisites you can deploy the RT53 Resolver logging SAM application by:
+Once you have pre-requisites you can deploy the RT53 Resolver logging SAM application. The first command will build the source of the application.
 
 ```diff
-@@ sam build @@
+sam build 
+```
 
+Ouutput from build should look like this
+```diff
 # Building function 'StreamInlineProcessingFunction'
 # Running PythonPipBuilder:ResolveDependencies
 # Running PythonPipBuilder:CopySource
@@ -97,7 +100,10 @@ Once you have pre-requisites you can deploy the RT53 Resolver logging SAM applic
 ! [*] Deploy: sam deploy --guided
 ```
 
-The first command will build the source of the application. The second command will package and deploy application to AWS, with a series of prompts:
+ The second command will package and deploy application to AWS, with a series of prompts:
+ ```diff
+sam deploy --guided
+```
 
 | Property                | Description           | Default Value  |
 | ----------------------- |---------------------| --------------:|
