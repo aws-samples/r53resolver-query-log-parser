@@ -58,12 +58,7 @@ The application uses several AWS resources, including Lambda functions, DynamoDB
 
 ## Pre-requisites 
 
-Before you deploy SAM template you will need to create S3 bucket and store the file with list of malicious domains. For this sample application we obtained list of malicious domain from <INSERT URL HERE> 
-      
-> Optional: You can also modify `import_blocked_list` Lambda function to download the file from location other than S3. i.e using CURL or similar.
-
-## Deploy the sample application
-
+###  SAM CLI
 The Serverless Application Model Command Line Interface (SAM CLI) is an extension of the AWS CLI that adds functionality for building and testing Lambda applications. 
 
 To use the SAM CLI, you need the following tools.
@@ -71,9 +66,14 @@ To use the SAM CLI, you need the following tools.
 * SAM CLI - [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
 * [Python 3 installed](https://www.python.org/downloads/)
 
-
+### Malicous Domains List
+You will need to create S3 bucket and store the file with list of malicious domains. For this sample application we obtained list of malicious domain from [curated list of awesome Threat Intelligence resources](https://github.com/hslatman/awesome-threat-intelligence). For the testing we used https://www.malwaredomainlist.com/mdl.php
+      
+> Optional: You can also modify `import_blocked_list` Lambda function to download the file from location other than S3. i.e using CURL or similar.
 To build and deploy your application for the first time, run the following in your shell:
 
+
+## Deploy SAM  
 ```bash
 sam build 
 sam deploy --guided
