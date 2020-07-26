@@ -38,6 +38,7 @@ This project will
 2. perform inline processing using AWS Lambda to check if DNS query was to malicious domain or not 
 3. output the modified DNS query reecords, indicating if queried DNS is malicious, to S3 bucket for further processing (i.e Athena)
 
+![alt text](https://raw.githubusercontent.com/spanningt/route53resolverLogging/master/dnslogs-architecture.png "Architecture Diagram")
 
 ## Project components
 Project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
