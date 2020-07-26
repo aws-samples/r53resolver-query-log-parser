@@ -39,7 +39,7 @@ This project will
 3. output the modified DNS query reecords, indicating if queried DNS is malicious, to S3 bucket for further processing (i.e Athena)
 
 Architecture-Diagram:
-![alt text](https://github.com/spanningt/route53resolverLogging/master/dnslogs-architecture.png "Architecture Diagram")
+![alt text](https://github.com/spanningt/route53resolverLogging/raw/master/dnslogs-architecture.png "Architecture Diagram")
 
 Inline-style: 
 ![alt text](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Logo Title Text 1")
