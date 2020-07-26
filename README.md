@@ -143,6 +143,43 @@ Navigate to AWS Console and go to Lamba. Find *ImportBlockedListFunctionOutput* 
 Once *ImportBlockedListFunctionOutput* has completed, navigate to DynamoDB console. Find `malicious-domains-list` table and make sure that in fact it has been populated with data.
 
 ## Create DNS Resolver Logs and send them to Kinesis Firehose
+To send Route 53 Resolver DNS quesry logs to Kinesis Firehose requires two steps. creation of resolver log configuration and
+
+#### Create Resolver Log Config
+
+Create a file `logging-kinesis-config.json` that looks like one below. Replace `DestinationArn` with value of your own Kinesis Firehose stream. You can get the value from Cloudformation output section or from Kinesis Firehose console.
+
+```json
+{
+      "CreatorRequestId": "2020-07-11-17:30",
+      "DestinationArn": "arn:aws:firehose:us-east-1:999999999999:deliverystream/cfnStackName-DeliveryStream-XXXXXXXXXXXX",
+      "Name": "logging-beta-kinesis"
+}
+```
+
+Next you will use AWS CLI to create Route53 Resolver log config.
+
+```bash 
+aws route53resolver create-resolver-query-log-config --cli-input-json  file://logging-kinesis-config.json --region us-east-1
+```
+
+Output after successufull Route53 Resolver log config will looks something like below 
+```json
+{
+    "ResolverQueryLogConfig": {
+        "Id": "rqlc-XXXXXXXXXXXX",
+        "OwnerId": "999999999999",
+        "Status": "CREATING",
+        "ShareStatus": "NOT_SHARED",
+        "AssociationCount": 0,
+        "Arn": "arn:aws:route53resolver:us-east-1:999999999999:resolver-query-log-config/rqlc-XXXXXXXXXXXX",
+        "Name": "logging-beta-kinesis",
+        "DestinationArn": "arn:aws:firehose:us-east-1:999999999999:deliverystream/cfnStackName-DeliveryStream-XXXXXXXXXXXX",
+        "CreatorRequestId": "2020-07-11-17:30",
+        "CreationTime": "2020-07-26T16:19:14.215Z"
+    }
+}
+```
 
 
 ## Add a resource to your application
