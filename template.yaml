@@ -5,37 +5,30 @@ Description: >
 Parameters: 
   DDBMaliciousDomainsTable:
     Description: DynamoDB Table to store list of malicious domains
-    Default: malicious-domains-list
+    Default: malicious-domains-table
     Type: String
   DDBTableRCU:
     Description: DynamoDB Table Read Capacity Units 
     Type: Number
-    Default: 500
+    Default: 50
   DDBTableWCU:
     Description: DynamoDB Table Write Capacity Units 
     Type: Number
-    Default: 500
-  S3MaliciousDomainsBucket: 
-    Description: S3 Bucket where malicious domains file resides
-    Default: tmak-rt53-resolver-logs
+    Default: 50
+  S3DNSLogsBucketName:
+    Description: Name for the S3 bucket for DNS Query Logs output
     Type: String
+    Default: dns_logs_output
     MinLength: 3
     MaxLength: 63
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
   S3MaliciousDomainsFilePath: 
     Description: Name of file that contains malicious domain, including extension, example /folder1/subfolder/allowedlist.txt
-    Default: config/all-malicious-domains.txt
+    Default: malicious_list_config/all_malicious_domains.txt
     Type: String
     MinLength: 4
     MaxLength: 63
     AllowedPattern: ^[a-zA-Z0-9!_.*'()-]+(\/[a-zA-Z0-9!_.*'()-]+)*$
-  S3LogsOutputBucketName:
-    Description: Name for the S3 bucket for DNS Query Logs output
-    Type: String
-    Default: dns-logs-output
-    MinLength: 3
-    MaxLength: 63
-    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
   StreamProcessorMemorySize:
     Description: Memmory allocation for Stream Processing Lambda Function
     Default: 256
@@ -46,11 +39,11 @@ Parameters:
     Type: Number
   StreamOutput3Prefix:
     Type: String
-    Default: dns-query-logs/!{timestamp:yyyy/MM/dd}
+    Default: dns_query_logs/!{timestamp:yyyy/MM/dd}
     Description: S3 prefix for Kinesis output
   StreamOutputErrorPrefix:
     Type: String
-    Default: dns-query-logs/!{timestamp:yyyy/MM/dd}
+    Default: dns_query_logs/!{timestamp:yyyy/MM/dd}
     Description: S3 prefix for Kinesis output
     Default: delivery-failures/!{firehose:error-output-type}/!{timestamp:yyyy/MM/dd}
   StreamOutputCompressionFormat:
@@ -67,7 +60,7 @@ Parameters:
   StreamBufferSize:
     Description: Amount of logs data that Firehose will buffer before outputting 
     Type: Number
-    Default: 5
+    Default: 1
     MinValue: 1
     MaxValue: 128
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
@@ -86,12 +79,12 @@ Resources:
       ProvisionedThroughput: 
         ReadCapacityUnits: !Ref DDBTableRCU
         WriteCapacityUnits: !Ref DDBTableWCU
-  # S3 Bucket for FH to store the logs
+  # S3 Bucket for storing list of malicious domains as well as for FH to store the logs
   DNSLogsDeliveryBucket:
     Type: AWS::S3::Bucket
     Properties:
       AccessControl: Private
-      BucketName: !Ref S3LogsOutputBucketName
+      BucketName: !Ref S3DNSLogsBucketName
   # Lambda Function that will be invoked by Firehose and in turn will check if queried domain is malicious
   StreamInlineProcessingFunction:
     Type: AWS::Serverless::Function
@@ -185,19 +178,19 @@ Resources:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     FunctionName: RT53-BlockedDomainsImporter
     Properties:
-      CodeUri: import_blocked_list/
-      Handler: import_blocked_list.lambda_handler
+      CodeUri: import_malicious_list/
+      Handler: import_malicious_list.lambda_handler
       Runtime: python3.7
       Environment:
         Variables:
-          S3_BUCKET_MALICOUS_DOMAINS: !Ref S3MaliciousDomainsBucket
+          S3_BUCKET_MALICOUS_DOMAINS: !Ref S3DNSLogsBucketName
           S3_OBJECT_MALICIOUS_DOMAINS: !Ref S3MaliciousDomainsFilePath
           MALICIOUS_DOMAINS_TABLE: !Ref DDBMaliciousDomainsTable
       Policies:
       - DynamoDBCrudPolicy:
           TableName: !Ref DDBMaliciousDomainsTable
       - S3ReadPolicy:
-          BucketName: !Ref S3MaliciousDomainsBucket
+          BucketName: !Ref S3DNSLogsBucketName
   
   
   
