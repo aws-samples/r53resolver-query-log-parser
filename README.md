@@ -48,11 +48,11 @@ Architecture-Diagram:
 ## Project components
 Project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
 
-- DeliveryStream (Firehose) - this will be target for RT53 resolver to output the logs 
-- import_blocked_list - Lambda function which imports names of 'bad' top level domains
+- deliverey stream (Firehose) - this will be target for RT53 resolver to output the logs 
+- import_malicious_list - Lambda function which imports names of 'bad' top level domains
 - stream_processor - Lambda function used by Kinesis Firehose to check if DNS loge entry (domain) is malicious or not
-- tests - Work in Progress 
 - template.yaml - A Seerverless Application Module (SAM) template that defines the application's AWS resources.
+- tests - Work in Progress 
 
 The application uses several AWS resources, including Lambda functions, DynamoDB table and Kinesis Firehose data stream. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
 
@@ -67,9 +67,10 @@ To use the SAM CLI, you need the following tools.
 * [Python 3 installed](https://www.python.org/downloads/)
 
 #### Malicous Domains List
-You will need to create S3 bucket and store the file with list of malicious domains. For this sample application we obtained list of malicious domain from [curated list of awesome Threat Intelligence resources](https://github.com/hslatman/awesome-threat-intelligence). For the testing we used https://www.malwaredomainlist.com/mdl.php
+This SAM will create S3 bucket (bucket will be named based on parameter `S3DNSLogsBucketName`). You will node to store the file with list of malicious domains in that bucket. For this sample application we obtained list of malicious domain from [curated list of awesome Threat Intelligence resources](https://github.com/hslatman/awesome-threat-intelligence). For the testing we used https://www.malwaredomainlist.com/mdl.php
       
-> Optional: You can also modify `import_blocked_list` Lambda function to download the file from location other than S3. i.e using CURL or similar.
+> Optional: You can also modify `import_malicious_list` Lambda function to download the file from location other than S3. i.e using CURL or similar.
+
 To build and deploy your application for the first time, run the following in your shell:
 
 
@@ -85,7 +86,7 @@ Ouutput from build should look like this
 # Building function 'StreamInlineProcessingFunction'
 # Running PythonPipBuilder:ResolveDependencies
 # Running PythonPipBuilder:CopySource
-# Building function 'ImportBlockedListFunc'
+# Building function 'ImportMaliciousListFunc'
 # Running PythonPipBuilder:ResolveDependencies
 # Running PythonPipBuilder:CopySource
 
@@ -109,19 +110,19 @@ sam deploy --guided
 | ----------------------- |---------------------| :--------------:|
 | **Stack Name**          | The name of the stack to deploy to CloudFormation. | give it unique name          |
 | **AWS Region**| The AWS region you want to deploy your app to.| us-east-1 |
-| **DDBMaliciousDomainsTable**| Name of DynamoDB Table to store list of malicious domain | `malicious-domains-list` |
-| **DDBTableRCU**| Read Capacity Units for Dynamo table *[need to lower this one]* |  `500` | 
-| **DDBTableWCU**| Wite Capacity Units for Dynamo table *[need to lower this one]* |   `500` | 
+| **DDBMaliciousDomainsTable**| Name of DynamoDB Table to store list of malicious domain | `malicious-domains-table` |
+| **DDBTableRCU**| Read Capacity Units for Dynamo table *[need to lower this one]* |  `50` | 
+| **DDBTableWCU**| Wite Capacity Units for Dynamo table *[need to lower this one]* |   `50` | 
 | **S3MaliciousDomainsBucket**| S3 Bucket where malicious domains file is stored (see Pre-requisites section) | no default |
-| **S3MaliciousDomainsFilePath**|  Path to file containing maliciuous domains| `config/all-malicious-domains.txt` | 
-| **S3LogsOutputBucketName**|  S3 Bucket for Kinesis Firehose to output logs | `dns-logs-output` |
+| **S3MaliciousDomainsFilePath**|  Path to file containing maliciuous domains| `malicious_list_config/all_malicious_domains.txt` | 
+| **S3LogsOutputBucketName**|  S3 Bucket for Kinesis Firehose to output logs | `dns_logs_output` |
 | **StreamProcessorMemorySize**| Inline Lambda function memory allocation | `256` |
 | **StreamProcessorTimeout**|  Inline Lambda function timeout | `120` |
 | **StreamOutput3Prefix**|  Prefix for Kinesis Firehose Output | `dns-query-logs/!{timestamp:yyyy/MM/dd}` |
 | **StreamOutputErrorPrefix**|  Prefix for Kinesis Firehose Output, for errors | `delivery-failures/!{firehose:error-output-type}/!{timestamp:yyyy/MM/dd}` | 
 | **StreamOutputCompressionFormat**|  Kinesis Firehose output formrmat | `GZIP` | 
 | **StreamBufferingInterval**|  Kinesis Firehose buffer interval in seconds | `60`| 
-| **StreamBufferSize**|  Kinesis Firehose buffer size in MB *[need to lower this one]* | `5` | 
+| **StreamBufferSize**|  Kinesis Firehose buffer size in MB *[need to lower this one]* | `1` | 
 | **Confirm changes before deploy**| If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.| `Y` |
 | **Allow SAM CLI IAM role creation**| This AWS SAM creates AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modified IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command. | `Y` |
 | **Save arguments to samconfig.toml**| If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.| `Y` |
@@ -136,11 +137,11 @@ You can find output values displayed after deployment in AWS Console under Cloud
  
 ## Populate `malicious-domains` DynamoDB Table
 
-Navigate to AWS Console and go to Lamba. Find *ImportBlockedListFunctionOutput* Lambda function it will be named `cfnStackName-ImportBlockedListFunc-XXXXXXXXX`
+Navigate to AWS Console and go to Lamba. Find *ImportMaliciousListFunctionOutput* Lambda function it will be named `cfnStackName-ImportMaliciousListFunc-XXXXXXXXX`
 
 > Note: before you run Lambda function you MUST complete pre-requisite section as described under *Malicous Domains List* section
 
-Once *ImportBlockedListFunctionOutput* has completed, navigate to DynamoDB console. Find `malicious-domains-list` table and make sure that in fact it has been populated with data.
+Once *ImportMaliciousListFunctionOutput* has completed, navigate to DynamoDB console. Find `malicious-domains-table` table and make sure that in fact it has been populated with data.
 
 ## Create DNS Resolver Logs and send them to Kinesis Firehose
 To send Route 53 Resolver DNS quesry logs to Kinesis Firehose requires two steps. creation of resolver log configuration and
