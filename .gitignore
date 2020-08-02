@@ -247,5 +247,8 @@ $RECYCLE.BIN/
 
 # remove unused folder
 find_bad_domain
+import_blocked_list
+samconfig.toml
+route53resolverLoggging.code-workspace
 
 # End of https://www.gitignore.io/api/osx,linux,python,windows,pycharm,visualstudiocode
