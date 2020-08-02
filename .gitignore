@@ -245,4 +245,7 @@ $RECYCLE.BIN/
 *.aws-sam
 *.old
 
+# remove unused folder
+find_bad_domain
+
 # End of https://www.gitignore.io/api/osx,linux,python,windows,pycharm,visualstudiocode
