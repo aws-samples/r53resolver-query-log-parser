@@ -31,9 +31,17 @@ def add_items(malicious_domain_list):
 """Import Domain Blacklist  Lambda function """
 def lambda_handler(event, context):
     logger.info("funct:: lambda_handler started... ")
+
+    # get bucket and file name from S3 event
+    record = event['Records'][0]
+    listBucket = record['s3']['bucket']['name']
+    listObject = record['s3']['object']['key']
+    
+    logger.info("Bucket: {}   File: {}".format(listBucket,listObject))
+
     # get the bad domains list from S3 
-    listBucket = os.environ.get('S3_BUCKET_MALICOUS_DOMAINS') 
-    listObject = os.environ.get('S3_OBJECT_MALICIOUS_DOMAINS') 
+    #listBucket = os.environ.get('S3_BUCKET_MALICOUS_DOMAINS') 
+    #listObject = os.environ.get('S3_OBJECT_MALICIOUS_DOMAINS') 
     s3.download_file(listBucket, listObject, '/tmp/listFile.txt')
     logger.info("Bad domain list file {} downloaded".format(listBucket +'/'+ listObject))
     
