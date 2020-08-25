@@ -22,13 +22,13 @@ Parameters:
     MinLength: 3
     MaxLength: 63
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
-  S3MaliciousDomainsFilePath: 
-    Description: Name of file that contains malicious domain, including extension, example /folder1/subfolder/allowedlist.txt
-    Default: malicious-list-config/all_malicious_domains.txt
+  S3MaliciousDomainsBucketName:
+    Description: Name for the S3 bucket that will hold malicious domains file
     Type: String
-    MinLength: 4
+    Default: malicious-domains-bucket
+    MinLength: 3
     MaxLength: 63
-    AllowedPattern: ^[a-zA-Z0-9!_.*'()-]+(\/[a-zA-Z0-9!_.*'()-]+)*$
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
   StreamProcessorMemorySize:
     Description: Memmory allocation for Stream Processing Lambda Function
     Default: 256
@@ -85,6 +85,11 @@ Resources:
     Properties:
       AccessControl: Private
       BucketName: !Ref S3DNSLogsBucketName
+  S3MaliciousDomainsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      BucketName: !Ref S3MaliciousDomainsBucketName
   # Lambda Function that will be invoked by Firehose and in turn will check if queried domain is malicious
   StreamInlineProcessingFunction:
     Type: AWS::Serverless::Function
@@ -183,17 +188,19 @@ Resources:
       Runtime: python3.7
       Environment:
         Variables:
-          S3_BUCKET_MALICOUS_DOMAINS: !Ref S3DNSLogsBucketName
-          S3_OBJECT_MALICIOUS_DOMAINS: !Ref S3MaliciousDomainsFilePath
           MALICIOUS_DOMAINS_TABLE: !Ref DDBMaliciousDomainsTable
       Policies:
       - DynamoDBCrudPolicy:
           TableName: !Ref DDBMaliciousDomainsTable
       - S3ReadPolicy:
-          BucketName: !Ref S3DNSLogsBucketName
-  
-  
-  
+          BucketName: !Ref S3MaliciousDomainsBucketName
+      Events:
+        MaliciousDomainsFileUpload:
+          Type: S3
+          Properties:
+            Bucket: !Ref S3MaliciousDomainsBucket
+            Events: s3:ObjectCreated:*
+          
  
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
