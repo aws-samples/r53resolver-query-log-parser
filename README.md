@@ -33,10 +33,11 @@ Sample DNS log record:
 ```
 
 ## Data flow
-This project will 
-1. ingest Route53 DNS logs into Kinesis Firehose data stream 
-2. perform inline processing using AWS Lambda to check if DNS query was to malicious domain or not 
-3. output the modified DNS query reecords, indicating if queried DNS is malicious, to S3 bucket for further processing (i.e Athena)
+This project has 4 main steps of the flow
+1. S3 bucket that holds malicious domains file, AWS Lambda `import_malicious_list/import_malicious_list.py` which parses that file and then stores it in DynamoDB table  
+2. Route53 DNS logs will be ingested into Kinesis Firehose data stream 
+3. Using AWS Lambda (inline processing) `find_bad_domain/find_bad_domain.py` to check if DNS query was resolving to  malicious domain 
+4. Output the modified DNS query reecords, indicating if queried DNS is malicious, to S3 bucket for further processing (i.e Athena)
 
 Architecture-Diagram:
 ---
@@ -48,11 +49,10 @@ Architecture-Diagram:
 ## Project components
 Project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
 
-- deliverey stream (Firehose) - this will be target for RT53 resolver to output the logs 
-- import_malicious_list - Lambda function which imports names of 'bad' top level domains
-- stream_processor - Lambda function used by Kinesis Firehose to check if DNS loge entry (domain) is malicious or not
+- DeliveryStream (Firehose) defined in template.yaml - this will be target for RT53 resolver to output the logs 
+- import_malicious_list.py - Lambda function which imports names of 'bad' top level domains
+- find_bad_domain.py - Lambda function used by Kinesis Firehose to check if DNS loge entry (domain) is malicious or not
 - template.yaml - A Seerverless Application Module (SAM) template that defines the application's AWS resources.
-- tests - Work in Progress 
 
 The application uses several AWS resources, including Lambda functions, DynamoDB table and Kinesis Firehose data stream. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
 
@@ -65,14 +65,6 @@ To use the SAM CLI, you need the following tools.
 
 * SAM CLI - [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
 * [Python 3 installed](https://www.python.org/downloads/)
-
-#### Malicous Domains List
-This SAM will create S3 bucket (bucket will be named based on parameter `S3DNSLogsBucketName`). You will node to store the file with list of malicious domains in that bucket. For this sample application we obtained list of malicious domain from [curated list of awesome Threat Intelligence resources](https://github.com/hslatman/awesome-threat-intelligence). For the testing we used https://www.malwaredomainlist.com/mdl.php
-      
-> Optional: You can also modify `import_malicious_list` Lambda function to download the file from location other than S3. i.e using CURL or similar.
-
-To build and deploy your application for the first time, run the following in your shell:
-
 
 ## Deploy SAM  
 Once you have pre-requisites you can deploy the RT53 Resolver logging SAM application. The first command will build the source of the application.
@@ -134,7 +126,15 @@ You can find output values displayed after deployment in AWS Console under Cloud
 
 ![alt text](https://github.com/spanningt/route53resolverLogging/raw/master/sam-output.png "SAM Output Values")
 
- 
+#### Malicous Domains List
+This SAM will create S3 bucket (bucket will be named based on parameter `S3MaliciousDomainsBucketName`). You will need to store the file with list of malicious domains in that bucket. Once you drop the file into S3, lambda function will be triggered automatically and it will parse the file and store the malicious domains into DynamoDB table as defined in `template.yaml` parameter `DDBMaliciousDomainsTable`
+
+For this sample application we obtained list of malicious domain from [curated list of awesome Threat Intelligence resources](https://github.com/hslatman/awesome-threat-intelligence). For the testing we used https://www.malwaredomainlist.com/mdl.php
+      
+> Optional: You can also modify `import_malicious_list` Lambda function to download the file from location other than S3. i.e using CURL or similar. 
+
+If file format that you are using isnt compatible with one we used you will need to modify `import_malicious_list`
+
 ## Populate `malicious-domains` DynamoDB Table
 
 Navigate to AWS Console and go to Lamba. Find *ImportMaliciousListFunctionOutput* Lambda function it will be named `cfnStackName-ImportMaliciousListFunc-XXXXXXXXX`
@@ -147,10 +147,9 @@ Once *ImportMaliciousListFunctionOutput* has completed, navigate to DynamoDB con
 To send Route 53 Resolver DNS quesry logs to Kinesis Firehose requires two steps. creation of resolver log configuration and
 
 #### Create Resolver Log Config
+Resolver query logging configuration, defines where you want Resolver to save DNS query logs that originate in your VPCs. Resolver can log queries only for VPCs that are in the same Region as the query logging configuration. Start by creating a config file i.e. `logging-kinesis-config.json` that looks like one below. Replace `DestinationArn` with value of your own Kinesis Firehose stream. You can get the value from Cloudformation output section or from Kinesis Firehose console.
 
-Resolver query logging configuration, which defines where you want Resolver to save DNS query logs that originate in your VPCs. Resolver can log queries only for VPCs that are in the same Region as the query logging configuration. Start by creating a config file i.e. `logging-kinesis-config.json` that looks like one below. Replace `DestinationArn` with value of your own Kinesis Firehose stream. You can get the value from Cloudformation output section or from Kinesis Firehose console.
-
-```json
+```json logging-kinesis-config.json
 {
       "CreatorRequestId": "2020-07-11-17:30",
       "DestinationArn": "arn:aws:firehose:us-east-1:999999999999:deliverystream/cfnStackName-DeliveryStream-XXXXXXXXXXXX",

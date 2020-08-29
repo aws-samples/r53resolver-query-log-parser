@@ -15,17 +15,17 @@ Parameters:
     Description: DynamoDB Table Write Capacity Units 
     Type: Number
     Default: 50
+  S3MaliciousDomainsBucketName:
+    Description: Name for the S3 bucket where you plan to deposit malicious domains file
+    Type: String
+    Default: malicious-domains-bucket
+    MinLength: 3
+    MaxLength: 63
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
   S3DNSLogsBucketName:
     Description: Name for the S3 bucket for DNS Query Logs output
     Type: String
     Default: dns-logs-output
-    MinLength: 3
-    MaxLength: 63
-    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
-  S3MaliciousDomainsBucketName:
-    Description: Name for the S3 bucket that will hold malicious domains file
-    Type: String
-    Default: malicious-domains-bucket
     MinLength: 3
     MaxLength: 63
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
