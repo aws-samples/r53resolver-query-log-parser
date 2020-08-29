@@ -51,7 +51,7 @@ def is_malicious_domain( record ):
 
     except Exception as ex:
       if type(ex).__name__ == 'TldDomainNotFound':
-        logger.info('{} is not using a valid domain. Skipping'.format(tldToSearchFor))
+        logger.info('{} is not using a valid domain. Skipping'.format(dnsQuery))
       else:
         # implement proper exception handling
         logger.info("while processing add_items() excpetion occured: {} ".format(ex))
