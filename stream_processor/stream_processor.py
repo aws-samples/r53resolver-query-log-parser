@@ -22,44 +22,45 @@ malicious_domains = os.environ.get('MALICIOUS_DOMAINS_TABLE')
 """ Function to validate if Top Level Domain is malicious - ie. does it exist in malicious domains DDB table?""" 
 def is_malicious_domain( record ):
     
-    logger.info("funct:: is_malicious_domain started for [{}] type=> {}".format(record, type(record)))
-    
-    isMaliciousDomain = "N"
-    ddbSearchField = 'domainName'
+  logger.info("funct:: is_malicious_domain started for [{}] type=> {}".format(record, type(record)))
 
-    recordValue = json.loads(record.get('message'))
+  isMaliciousDomain = "N"
+  ddbSearchField = 'domainName'
 
-    dnsQuery = recordValue['query_name']
-    srcaddr = recordValue['srcaddr']
-    
-    try:
-      # get Top Level Domain 
-      tldToSearchFor = get_fld("http://"+ dnsQuery)
+  recordValue = json.loads(record.get('message'))
+  # preset malicious to N
+  recordValue["isMaliciousDomain"] = isMaliciousDomain
 
-      #initialize and search the DynamoDB table 
-      table = ddb.Table(malicious_domains)
-      response = table.get_item(Key={ddbSearchField: tldToSearchFor})
-    
-      if "Item" in response.keys():
-        isMaliciousDomain = "Y"
+  #preset return value 
+  returnValue = "{'message': '" + json.dumps(recordValue) + "'}"
 
-      # add field isMaliciousDomain to DNS Query record -> this will end up in Firehose > S3
-      recordValue["isMaliciousDomain"] = isMaliciousDomain
-    
-      # format the return value to conforom to Firehose
-      returnValue = "{'message': '" + json.dumps(recordValue) + "'}"
+  dnsQuery = recordValue['query_name']
+  srcaddr = recordValue['srcaddr']
 
-    except Exception as ex:
-      if type(ex).__name__ == 'TldDomainNotFound':
-        logger.info('{} is not using a valid domain. Skipping'.format(dnsQuery))
-      else:
-        # implement proper exception handling
-        logger.info("while processing add_items() excpetion occured: {} ".format(ex))
-        raise
+  try:
+    # get Top Level Domain 
+    tldToSearchFor = get_fld("http://"+ dnsQuery)
 
-    logger.info("funct:: is_malicious_domain completed return Value [{}]".format(returnValue))
-    return returnValue
-   
+    #initialize and search the DynamoDB table 
+    table = ddb.Table(malicious_domains)
+    response = table.get_item(Key={ddbSearchField: tldToSearchFor})
+
+    if "Item" in response.keys():
+      isMaliciousDomain = "Y"
+
+    # add field isMaliciousDomain to DNS Query record -> this will end up in Firehose > S3
+    recordValue["isMaliciousDomain"] = isMaliciousDomain
+
+    # format the return value to conforom to Firehose
+    returnValue = "{'message': '" + json.dumps(recordValue) + "'}"
+
+  except Exception as ex:
+    # implement proper exception handling
+    logger.info("while processing add_items() excpetion occured: {} ".format(ex))
+
+  logger.info("funct:: is_malicious_domain completed return Value [{}]".format(returnValue))
+  return returnValue
+
 
 """ Main handler function """
 def lambda_handler(event, context):
