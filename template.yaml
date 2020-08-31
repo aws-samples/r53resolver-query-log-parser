@@ -222,5 +222,8 @@ Outputs:
   S3BucketDNSLogsOutput:
     Description: "S3 Bucket where DNS Logs are stored"
     Value: !Ref DNSLogsDeliveryBucket
+  S3MaliciousDomainsBucketOutput:
+    Description: "S3 Bucket that will be storing malicious list of domains"
+    Value: !Ref S3MaliciousDomainsBucket
   
   
