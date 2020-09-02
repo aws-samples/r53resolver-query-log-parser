@@ -1,7 +1,7 @@
 # Route53 Resolver DNS Query Log Processor
 
 ## About
-This project is intended to detect DNS queries to malicious domains using [Amazon Route 53](https://aws.amazon.com/route53/) Resolver DNS query logs. Project is packaged as [Serverless Application Module (SAM)](https://aws.amazon.com/serverless/sam/) . Route 53 Resolver logs contains information about the queries, such as the following:
+This project is intended to detect DNS queries to interesting domains using [Amazon Route 53](https://aws.amazon.com/route53/) Resolver DNS query logs. Project is packaged as [Serverless Application Module (SAM)](https://aws.amazon.com/serverless/sam/) . Route 53 Resolver logs contains information about the queries, such as the following:
 - Route 53 edge location that responded to the DNS query
 - Domain or subdomain that was requested
 - DNS record type, such as A or AAAA
@@ -34,10 +34,10 @@ Sample DNS log record:
 
 ## Data flow
 This project has 4 main steps of the flow
-1. S3 bucket that holds malicious domains file, AWS Lambda `import_malicious_list/import_malicious_list.py` which parses that file and then stores it in DynamoDB table  
+1. S3 bucket that holds interesting domains file, AWS Lambda `import_interesting_domains/import_interesting_domains.py` which parses that file and then stores it in DynamoDB table  
 2. Route53 DNS logs will be ingested into Kinesis Firehose data stream 
-3. Using AWS Lambda (inline processing) `find_bad_domain/find_bad_domain.py` to check if DNS query was resolving to  malicious domain 
-4. Output the modified DNS query reecords, indicating if queried DNS is malicious, to S3 bucket for further processing (i.e Athena)
+3. Using AWS Lambda (inline processing) `find_bad_domain/find_bad_domain.py` to check if DNS query was resolving to  interesting domain 
+4. Output the modified DNS query reecords, indicating if queried DNS is interesting, to S3 bucket for further processing (i.e Athena)
 
 Architecture-Diagram:
 ---
@@ -50,8 +50,8 @@ Architecture-Diagram:
 Project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
 
 - DeliveryStream (Firehose) defined in template.yaml - this will be target for RT53 resolver to output the logs 
-- import_malicious_list.py - Lambda function which imports names of 'bad' top level domains
-- find_bad_domain.py - Lambda function used by Kinesis Firehose to check if DNS loge entry (domain) is malicious or not
+- import_interesting_domains.py - Lambda function which imports names of 'bad' top level domains
+- find_bad_domain.py - Lambda function used by Kinesis Firehose to check if DNS loge entry (domain) is interesting or not
 - template.yaml - A Seerverless Application Module (SAM) template that defines the application's AWS resources.
 
 The application uses several AWS resources, including Lambda functions, DynamoDB table and Kinesis Firehose data stream. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
@@ -78,7 +78,7 @@ Ouutput from build should look like this
 # Building function 'StreamInlineProcessingFunction'
 # Running PythonPipBuilder:ResolveDependencies
 # Running PythonPipBuilder:CopySource
-# Building function 'ImportMaliciousListFunc'
+# Building function 'ImportinterestingListFunc'
 # Running PythonPipBuilder:ResolveDependencies
 # Running PythonPipBuilder:CopySource
 
@@ -102,11 +102,11 @@ sam deploy --guided
 | ----------------------- |---------------------| :--------------:|
 | **Stack Name**          | The name of the stack to deploy to CloudFormation. | give it unique name          |
 | **AWS Region**| The AWS region you want to deploy your app to.| us-east-1 |
-| **DDBMaliciousDomainsTable**| Name of DynamoDB Table to store list of malicious domain | `malicious-domains-table` |
+| **DDBinterestingDomainsTable**| Name of DynamoDB Table to store list of interesting domain | `interesting-domains-table` |
 | **DDBTableRCU**| Read Capacity Units for Dynamo table *[need to lower this one]* |  `50` | 
 | **DDBTableWCU**| Wite Capacity Units for Dynamo table *[need to lower this one]* |   `50` | 
-| **S3MaliciousDomainsBucket**| S3 Bucket where malicious domains file is stored (see Pre-requisites section) | no default |
-| **S3MaliciousDomainsFilePath**|  Path to file containing maliciuous domains| `malicious_list_config/all_malicious_domains.txt` | 
+| **S3interestingDomainsBucket**| S3 Bucket where interesting domains file is stored (see Pre-requisites section) | no default |
+| **S3interestingDomainsFilePath**|  Path to file containing maliciuous domains| `interesting_list_config/all_interesting_domains.txt` | 
 | **S3LogsOutputBucketName**|  S3 Bucket for Kinesis Firehose to output logs | `dns_logs_output` |
 | **StreamProcessorMemorySize**| Inline Lambda function memory allocation | `256` |
 | **StreamProcessorTimeout**|  Inline Lambda function timeout | `120` |
@@ -127,21 +127,21 @@ You can find output values displayed after deployment in AWS Console under Cloud
 ![alt text](https://github.com/spanningt/route53resolverLogging/raw/master/sam-output.png "SAM Output Values")
 
 #### Malicous Domains List
-This SAM will create S3 bucket (bucket will be named based on parameter `S3MaliciousDomainsBucketName`). You will need to store the file with list of malicious domains in that bucket. Once you drop the file into S3, lambda function will be triggered automatically and it will parse the file and store the malicious domains into DynamoDB table as defined in `template.yaml` parameter `DDBMaliciousDomainsTable`
+This SAM will create S3 bucket (bucket will be named based on parameter `S3interestingDomainsBucketName`). You will need to store the file with list of interesting domains in that bucket. Once you drop the file into S3, lambda function will be triggered automatically and it will parse the file and store the interesting domains into DynamoDB table as defined in `template.yaml` parameter `DDBinterestingDomainsTable`
 
-For this sample application we obtained list of malicious domain from [curated list of awesome Threat Intelligence resources](https://github.com/hslatman/awesome-threat-intelligence). For the testing we used https://www.malwaredomainlist.com/mdl.php
+For this sample application we obtained list of interesting domain from [curated list of awesome Threat Intelligence resources](https://github.com/hslatman/awesome-threat-intelligence). For the testing we used https://www.malwaredomainlist.com/mdl.php
       
-> Optional: You can also modify `import_malicious_list` Lambda function to download the file from location other than S3. i.e using CURL or similar. 
+> Optional: You can also modify `import_interesting_domains` Lambda function to download the file from location other than S3. i.e using CURL or similar. 
 
-If file format that you are using isnt compatible with one we used you will need to modify `import_malicious_list`
+If file format that you are using isnt compatible with one we used you will need to modify `import_interesting_domains`
 
-## Populate `malicious-domains` DynamoDB Table
+## Populate `interesting-domains` DynamoDB Table
 
-Navigate to AWS Console and go to Lamba. Find *ImportMaliciousListFunctionOutput* Lambda function it will be named `cfnStackName-ImportMaliciousListFunc-XXXXXXXXX`
+Navigate to AWS Console and go to Lamba. Find *ImportinterestingListFunctionOutput* Lambda function it will be named `cfnStackName-ImportinterestingListFunc-XXXXXXXXX`
 
 > Note: before you run Lambda function you MUST complete pre-requisite section as described under *Malicous Domains List* section
 
-Once *ImportMaliciousListFunctionOutput* has completed, navigate to DynamoDB console. Find `malicious-domains-table` table and make sure that in fact it has been populated with data.
+Once *ImportinterestingListFunctionOutput* has completed, navigate to DynamoDB console. Find `interesting-domains-table` table and make sure that in fact it has been populated with data.
 
 ## Create DNS Resolver Logs and send them to Kinesis Firehose
 To send Route 53 Resolver DNS quesry logs to Kinesis Firehose requires two steps. creation of resolver log configuration and
