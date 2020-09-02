@@ -15,7 +15,7 @@ logger.setLevel(logging.INFO)
 s3 = boto3.client('s3')
 ddb = resource('dynamodb')
 
-interesting_domains = os.environ.get('interesting_DOMAINS_TABLE')
+interesting_domains = os.environ.get('INTERESTING_DOMAINS_TABLE')
 
 
 
@@ -24,15 +24,15 @@ def is_interesting_domain( record ):
     
   logger.info("funct:: is_interesting_domain started for [{}] type=> {}".format(record, type(record)))
 
-  isinterestingDomain = "N"
+  isMatchedDomain = "N"
   ddbSearchField = 'domainName'
 
   recordValue = json.loads(record.get('message'))
   # preset interesting to N
-  recordValue["isinterestingDomain"] = isinterestingDomain
+  recordValue["isMatchedDomain"] = isMatchedDomain
 
   #preset return value 
-  returnValue = "{'message': '" + json.dumps(recordValue) + "'}"
+  returnValue = json.dumps(recordValue) 
 
   dnsQuery = recordValue['query_name']
   srcaddr = recordValue['srcaddr']
@@ -46,13 +46,13 @@ def is_interesting_domain( record ):
     response = table.get_item(Key={ddbSearchField: tldToSearchFor})
 
     if "Item" in response.keys():
-      isinterestingDomain = "Y"
+      isMatchedDomain = "Y"
 
-    # add field isinterestingDomain to DNS Query record -> this will end up in Firehose > S3
-    recordValue["isinterestingDomain"] = isinterestingDomain
+    # add field isMatchedDomain to DNS Query record -> this will end up in Firehose > S3
+    recordValue["isMatchedDomain"] = isMatchedDomain
 
     # format the return value to conforom to Firehose
-    returnValue = "{'message': '" + json.dumps(recordValue) + "'}"
+    returnValue = json.dumps(recordValue)
 
   except Exception as ex:
     # implement proper exception handling
@@ -82,7 +82,6 @@ def lambda_handler(event, context):
       output_record = {
         'recordId': record['recordId'],
         'result': 'Ok',
-        #data': base64.b64encode(checkedRecord)
         'data': base64.b64encode(checkedRecord.encode('utf-8') + b'\n').decode('utf-8')
       }
       output.append(output_record)

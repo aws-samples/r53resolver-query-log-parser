@@ -85,7 +85,7 @@ Resources:
     Properties:
       AccessControl: Private
       BucketName: !Ref S3DNSLogsBucketName
-  S3interestingDomainsBucket:
+  S3InterestingDomainsBucket:
     Type: AWS::S3::Bucket
     Properties:
       AccessControl: Private
@@ -102,7 +102,7 @@ Resources:
       MemorySize: !Ref StreamProcessorMemorySize
       Environment:
         Variables:
-          interesting_DOMAINS_TABLE: !Ref DDBInterestingDomainsTable
+          INTERESTING_DOMAINS_TABLE: !Ref DDBInterestingDomainsTable
       Policies:
       - DynamoDBCrudPolicy:
           TableName: !Ref DDBInterestingDomainsTable
@@ -179,26 +179,26 @@ Resources:
   
 
   # Function to import list of interesting domains and store them in DynamoDB table 
-  ImportBlockedListFunc:
+  ImportInterestingDomainsListFunc:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-    FunctionName: RT53-BlockedDomainsImporter
+    FunctionName: RT53-InterestingDomainsImporter
     Properties:
       CodeUri: import_interesting_domains/
       Handler: import_interesting_domains.lambda_handler
       Runtime: python3.7
       Environment:
         Variables:
-          interesting_DOMAINS_TABLE: !Ref DDBInterestingDomainsTable
+          INTERESTING_DOMAINS_TABLE: !Ref DDBInterestingDomainsTable
       Policies:
       - DynamoDBCrudPolicy:
           TableName: !Ref DDBInterestingDomainsTable
       - S3ReadPolicy:
           BucketName: !Ref S3InterestingDomainsBucketName
       Events:
-        interestingDomainsFileUpload:
+        InterestingDomainsFileUpload:
           Type: S3
           Properties:
-            Bucket: !Ref S3interestingDomainsBucket
+            Bucket: !Ref S3InterestingDomainsBucket
             Events: s3:ObjectCreated:*
           
  
@@ -207,9 +207,9 @@ Outputs:
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   
-  ImportBlockedListFunctionOutput:
-    Description: "ImportBlockedListFunc Lambda Function ARN"
-    Value: !GetAtt ImportBlockedListFunc.Arn
+  ImportInterestingDomainsListFunctionOutput:
+    Description: "ImportInterestingDomainsListFunc Lambda Function ARN"
+    Value: !GetAtt ImportInterestingDomainsListFunc.Arn
   StreamInlineProcessingFunctionOutput:
     Description: "Lambda Function used by Firehose to check if domains are interesting or not"
     Value: !GetAtt StreamInlineProcessingFunction.Arn
@@ -222,8 +222,8 @@ Outputs:
   S3BucketDNSLogsOutput:
     Description: "S3 Bucket where DNS Logs are stored"
     Value: !Ref DNSLogsDeliveryBucket
-  S3interestingDomainsBucketOutput:
+  S3InterestingDomainsBucketOutput:
     Description: "S3 Bucket that will be storing interesting list of domains"
-    Value: !Ref S3interestingDomainsBucket
+    Value: !Ref S3InterestingDomainsBucket
   
   

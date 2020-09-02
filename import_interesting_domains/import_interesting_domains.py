@@ -10,14 +10,14 @@ logger.setLevel(logging.INFO)
 
 s3 = boto3.client('s3')
 dynamodb_resource = resource('dynamodb')
-bad_domains_table = os.environ.get('interesting_DOMAINS_TABLE')
+interesting_domains_table = os.environ.get('INTERESTING_DOMAINS_TABLE')
     
-"""Add bad domains to DDB Table
+"""Add intersting domains to DDB Table
     Parameters: interesting_domain_list: list, required
 """
 def add_items(interesting_domain_list):
     logger.info("funct:: add_items started... ")
-    table = dynamodb_resource.Table(bad_domains_table)
+    table = dynamodb_resource.Table(interesting_domains_table)
     with table.batch_writer() as batch:
         for domainFld in interesting_domain_list:
             try:
@@ -40,8 +40,6 @@ def lambda_handler(event, context):
     logger.info("Bucket: {}   File: {}".format(listBucket,listObject))
 
     # get the bad domains list from S3 
-    #listBucket = os.environ.get('S3_BUCKET_MALICOUS_DOMAINS') 
-    #listObject = os.environ.get('S3_OBJECT_interesting_DOMAINS') 
     s3.download_file(listBucket, listObject, '/tmp/listFile.txt')
     logger.info("Bad domain list file {} downloaded".format(listBucket +'/'+ listObject))
     
