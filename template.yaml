@@ -102,7 +102,7 @@ Resources:
       MemorySize: !Ref StreamProcessorMemorySize
       Environment:
         Variables:
-          interesting_DOMAINS_TABLE: !Ref DDBInterestingDomainsTable
+          INTERESTING_DOMAINS_TABLE: !Ref DDBInterestingDomainsTable
       Policies:
       - DynamoDBCrudPolicy:
           TableName: !Ref DDBInterestingDomainsTable
@@ -188,7 +188,7 @@ Resources:
       Runtime: python3.7
       Environment:
         Variables:
-          interesting_DOMAINS_TABLE: !Ref DDBInterestingDomainsTable
+          INTERESTING_DOMAINS_TABLE: !Ref DDBInterestingDomainsTable
       Policies:
       - DynamoDBCrudPolicy:
           TableName: !Ref DDBInterestingDomainsTable
