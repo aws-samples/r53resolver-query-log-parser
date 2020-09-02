@@ -3,9 +3,9 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   Sample SAM Template for Route 53 Resolver DNS Query log processing
 Parameters: 
-  DDBMaliciousDomainsTable:
-    Description: DynamoDB Table to store list of malicious domains
-    Default: malicious-domains-table
+  DDBInterestingDomainsTable:
+    Description: DynamoDB Table to store list of interesting domains
+    Default: interesting-domains-table
     Type: String
   DDBTableRCU:
     Description: DynamoDB Table Read Capacity Units 
@@ -15,10 +15,10 @@ Parameters:
     Description: DynamoDB Table Write Capacity Units 
     Type: Number
     Default: 50
-  S3MaliciousDomainsBucketName:
-    Description: Name for the S3 bucket where you plan to deposit malicious domains file
+  S3InterestingDomainsBucketName:
+    Description: Name for the S3 bucket where you plan to deposit interesting domains file
     Type: String
-    Default: malicious-domains-bucket
+    Default: interesting-domains-bucket
     MinLength: 3
     MaxLength: 63
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
@@ -68,29 +68,29 @@ Globals:
   Function:
     Timeout: 900
 Resources:
-  # DynamoDB table to store list of malicious domains
-  MaliciousDomainsDynamoDBTable: 
+  # DynamoDB table to store list of interesting domains
+  InterestingDomainsDynamoDBTable: 
     Type: AWS::Serverless::SimpleTable
     Properties: 
-      TableName: !Ref DDBMaliciousDomainsTable
+      TableName: !Ref DDBInterestingDomainsTable
       PrimaryKey: 
         Name: domainName
         Type: String
       ProvisionedThroughput: 
         ReadCapacityUnits: !Ref DDBTableRCU
         WriteCapacityUnits: !Ref DDBTableWCU
-  # S3 Bucket for storing list of malicious domains as well as for FH to store the logs
+  # S3 Bucket for storing list of interesting domains as well as for FH to store the logs
   DNSLogsDeliveryBucket:
     Type: AWS::S3::Bucket
     Properties:
       AccessControl: Private
       BucketName: !Ref S3DNSLogsBucketName
-  S3MaliciousDomainsBucket:
+  S3interestingDomainsBucket:
     Type: AWS::S3::Bucket
     Properties:
       AccessControl: Private
-      BucketName: !Ref S3MaliciousDomainsBucketName
-  # Lambda Function that will be invoked by Firehose and in turn will check if queried domain is malicious
+      BucketName: !Ref S3InterestingDomainsBucketName
+  # Lambda Function that will be invoked by Firehose and in turn will check if queried domain is interesting
   StreamInlineProcessingFunction:
     Type: AWS::Serverless::Function
     FunctionName: RT53-KinesisStreamDNSLogsProcessor
@@ -102,10 +102,10 @@ Resources:
       MemorySize: !Ref StreamProcessorMemorySize
       Environment:
         Variables:
-          MALICIOUS_DOMAINS_TABLE: !Ref DDBMaliciousDomainsTable
+          interesting_DOMAINS_TABLE: !Ref DDBInterestingDomainsTable
       Policies:
       - DynamoDBCrudPolicy:
-          TableName: !Ref DDBMaliciousDomainsTable
+          TableName: !Ref DDBInterestingDomainsTable
       
   
   DeliveryStream:
@@ -178,27 +178,27 @@ Resources:
               - !GetAtt StreamInlineProcessingFunction.Arn
   
 
-  # Function to import list of maliciuos domains and store them in DynamoDB table 
+  # Function to import list of interesting domains and store them in DynamoDB table 
   ImportBlockedListFunc:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     FunctionName: RT53-BlockedDomainsImporter
     Properties:
-      CodeUri: import_malicious_list/
-      Handler: import_malicious_list.lambda_handler
+      CodeUri: import_interesting_domains/
+      Handler: import_interesting_domains.lambda_handler
       Runtime: python3.7
       Environment:
         Variables:
-          MALICIOUS_DOMAINS_TABLE: !Ref DDBMaliciousDomainsTable
+          interesting_DOMAINS_TABLE: !Ref DDBInterestingDomainsTable
       Policies:
       - DynamoDBCrudPolicy:
-          TableName: !Ref DDBMaliciousDomainsTable
+          TableName: !Ref DDBInterestingDomainsTable
       - S3ReadPolicy:
-          BucketName: !Ref S3MaliciousDomainsBucketName
+          BucketName: !Ref S3InterestingDomainsBucketName
       Events:
-        MaliciousDomainsFileUpload:
+        interestingDomainsFileUpload:
           Type: S3
           Properties:
-            Bucket: !Ref S3MaliciousDomainsBucket
+            Bucket: !Ref S3interestingDomainsBucket
             Events: s3:ObjectCreated:*
           
  
@@ -211,19 +211,19 @@ Outputs:
     Description: "ImportBlockedListFunc Lambda Function ARN"
     Value: !GetAtt ImportBlockedListFunc.Arn
   StreamInlineProcessingFunctionOutput:
-    Description: "Lambda Function used by Firehose to check if domains are malicious or not"
+    Description: "Lambda Function used by Firehose to check if domains are interesting or not"
     Value: !GetAtt StreamInlineProcessingFunction.Arn
   KinesisFirehosestreamARNOutput:
     Description: "Kinesis Firehose Delivery Stream for DNS Logs"
     Value: !GetAtt DeliveryStream.Arn
   DynamoDBTableOutput:
-    Description: "DynamoDB table for maintaining list of malicious domains"
-    Value: !Ref MaliciousDomainsDynamoDBTable
+    Description: "DynamoDB table for maintaining list of interesting domains"
+    Value: !Ref InterestingDomainsDynamoDBTable
   S3BucketDNSLogsOutput:
     Description: "S3 Bucket where DNS Logs are stored"
     Value: !Ref DNSLogsDeliveryBucket
-  S3MaliciousDomainsBucketOutput:
-    Description: "S3 Bucket that will be storing malicious list of domains"
-    Value: !Ref S3MaliciousDomainsBucket
+  S3interestingDomainsBucketOutput:
+    Description: "S3 Bucket that will be storing interesting list of domains"
+    Value: !Ref S3interestingDomainsBucket
   
   

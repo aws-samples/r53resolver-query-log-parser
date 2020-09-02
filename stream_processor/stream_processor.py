@@ -15,21 +15,21 @@ logger.setLevel(logging.INFO)
 s3 = boto3.client('s3')
 ddb = resource('dynamodb')
 
-malicious_domains = os.environ.get('MALICIOUS_DOMAINS_TABLE')
+interesting_domains = os.environ.get('interesting_DOMAINS_TABLE')
 
 
 
-""" Function to validate if Top Level Domain is malicious - ie. does it exist in malicious domains DDB table?""" 
-def is_malicious_domain( record ):
+""" Function to validate if Top Level Domain is interesting - ie. does it exist in interesting domains DDB table?""" 
+def is_interesting_domain( record ):
     
-  logger.info("funct:: is_malicious_domain started for [{}] type=> {}".format(record, type(record)))
+  logger.info("funct:: is_interesting_domain started for [{}] type=> {}".format(record, type(record)))
 
-  isMaliciousDomain = "N"
+  isinterestingDomain = "N"
   ddbSearchField = 'domainName'
 
   recordValue = json.loads(record.get('message'))
-  # preset malicious to N
-  recordValue["isMaliciousDomain"] = isMaliciousDomain
+  # preset interesting to N
+  recordValue["isinterestingDomain"] = isinterestingDomain
 
   #preset return value 
   returnValue = "{'message': '" + json.dumps(recordValue) + "'}"
@@ -42,14 +42,14 @@ def is_malicious_domain( record ):
     tldToSearchFor = get_fld("http://"+ dnsQuery)
 
     #initialize and search the DynamoDB table 
-    table = ddb.Table(malicious_domains)
+    table = ddb.Table(interesting_domains)
     response = table.get_item(Key={ddbSearchField: tldToSearchFor})
 
     if "Item" in response.keys():
-      isMaliciousDomain = "Y"
+      isinterestingDomain = "Y"
 
-    # add field isMaliciousDomain to DNS Query record -> this will end up in Firehose > S3
-    recordValue["isMaliciousDomain"] = isMaliciousDomain
+    # add field isinterestingDomain to DNS Query record -> this will end up in Firehose > S3
+    recordValue["isinterestingDomain"] = isinterestingDomain
 
     # format the return value to conforom to Firehose
     returnValue = "{'message': '" + json.dumps(recordValue) + "'}"
@@ -58,7 +58,7 @@ def is_malicious_domain( record ):
     # implement proper exception handling
     logger.info("while processing add_items() excpetion occured: {} ".format(ex))
 
-  logger.info("funct:: is_malicious_domain completed return Value [{}]".format(returnValue))
+  logger.info("funct:: is_interesting_domain completed return Value [{}]".format(returnValue))
   return returnValue
 
 
@@ -76,7 +76,7 @@ def lambda_handler(event, context):
       logger.info("Record Decoded {}".format(payload))
       logger.info("PayloadType {}".format(type(payload)))
       
-      checkedRecord = is_malicious_domain(payload)
+      checkedRecord = is_interesting_domain(payload)
       #checkedRecord = json.dumps(payload)
       
       output_record = {

@@ -1,4 +1,4 @@
-## Non Malicious - copy between curly brackets
+## Non interesting - copy between curly brackets
 {
 	"invocationId": "94c7390e-e11b-4140-b526-e6e6970174c4",
 	"deliveryStreamArn": "arn:aws:firehose:us-east-1:999999999999:deliverystream/FH-Dummy-DeliveryStream",
@@ -10,7 +10,7 @@
 	}]
 }
 
-##  Malicious  one  - copy between curly brackets
+##  interesting  one  - copy between curly brackets
 {
 	"invocationId": "94c7390e-e11b-4140-b526-e6e6970174c4",
 	"deliveryStreamArn": "arn:aws:firehose:us-east-1:999999999999:deliverystream/FH-Dummy-DeliveryStream",
