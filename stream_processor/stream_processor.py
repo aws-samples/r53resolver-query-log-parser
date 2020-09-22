@@ -16,8 +16,8 @@ s3 = boto3.client('s3')
 ddb = resource('dynamodb')
 
 interesting_domains = os.environ.get('INTERESTING_DOMAINS_TABLE')
-
-
+sns_topic = os.environ.get('SNS_TOPIC')
+sns_enabled = os.environ.get('SNS_ON')
 
 """ Function to validate if Top Level Domain is interesting - ie. does it exist in interesting domains DDB table?""" 
 def is_interesting_domain( record ):
@@ -35,7 +35,7 @@ def is_interesting_domain( record ):
   returnValue = json.dumps(recordValue) 
 
   dnsQuery = recordValue['query_name']
-  srcaddr = recordValue['srcaddr']
+
 
   try:
     # get Top Level Domain 
@@ -47,11 +47,23 @@ def is_interesting_domain( record ):
 
     if "Item" in response.keys():
       isMatchedDomain = "Y"
+      #Check if SNS is enabled
+      if sns_enabled == 'Y':
+        # Create an SNS client
+        sns = boto3.client('sns')
+        #Send Notification
+        logger.info("Sending notification to SNS topic: {} ".format(sns_topic))
+        sns.publish(
+          TopicArn=sns_topic,
+          Subject='Route 53 Query Log Matched',
+          Message=json.dumps(recordValue)
+        )
+
 
     # add field isMatchedDomain to DNS Query record -> this will end up in Firehose > S3
     recordValue["isMatchedDomain"] = isMatchedDomain
 
-    # format the return value to conforom to Firehose
+    # format the return value
     returnValue = json.dumps(recordValue)
 
   except Exception as ex:
