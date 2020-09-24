@@ -140,7 +140,7 @@ Lambda:
 - we assume that Firehose processes record every minute, so that translates to 1440 lambda invocations and we estimated ~10 seconds duration each  
 
 SNS
-- we estimated that .5% of all DNS requests will trigger a "match notification" via SNS. We rounded itto 200,000 a month
+- we estimated that .5% of all DNS requests will trigger a "match notification" via SNS. We rounded it to 200,000 a month
 
 S3 storage
 - we estimated rougly 54GB (864,000 records * 2kb * 30.5 days) of uncompressed files will go to S3 storage monthly
@@ -149,16 +149,19 @@ Cost Estimate details for above components is here: https://calculator.aws/#/est
 
 DynamoDB
 - we estimated 26,352,000 reads (864,000 records a day * 30.5 days) and 1,000,000 writes (weekly 250,000 writes)
+```bash
 IMPORTANT: CloudFormation Template defaults to 50 Write and 50 Read Units. 
+```
 
 DynamoDB isn part of the estimate link above and estimated on-demand pricing cost would be:
-Writes: $1.25 per million writes x .1 million writes = $1.25
-Reads: $0.25 per million reads x 26.35 million reads = $6.58
+- Writes: $1.25 per million writes x .1 million writes = $1.25
+- Reads: $0.25 per million reads x 26.35 million reads = $6.58
+
 You can get more details how to calculate DynamoDB cost here: https://aws.amazon.com/dynamodb/pricing/on-demand/ 
 
-Total monthly cost based on the above assumptions would be $17.02 USD
-$9.19 USD for Firehose, Lambda, SNS and S3
-$7.83 USD for DynamoDB
+**Total monthly cost based on the above assumptions would be $17.02 USD**
+- $9.19 USD for Firehose, Lambda, SNS and S3
+- $7.83 USD for DynamoDB
 
 ## Cleanup
 
