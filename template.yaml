@@ -97,7 +97,7 @@ Resources:
     Properties:
       CodeUri: stream_processor/
       Handler: stream_processor.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Timeout: !Ref StreamProcessorTimeout
       MemorySize: !Ref StreamProcessorMemorySize
       Environment:
@@ -185,7 +185,7 @@ Resources:
     Properties:
       CodeUri: import_interesting_domains/
       Handler: import_interesting_domains.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       Environment:
         Variables:
           INTERESTING_DOMAINS_TABLE: !Ref DDBInterestingDomainsTable
