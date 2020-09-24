@@ -63,6 +63,21 @@ Parameters:
     Default: 1
     MinValue: 1
     MaxValue: 128
+  SNStopicName:
+    Description: Name for the SNS topic to receive notifications
+    Type: String
+    Default: dns-logs-match-topic
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+  SNSinUse:
+    Type: String
+    Default: 'Y'
+    AllowedValues:
+    - 'Y'
+    - 'N'
+    Description: Confirm if you want to receive SNS notification when matches are found. You will still need to subscribe to the topic.
+
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
@@ -90,6 +105,13 @@ Resources:
     Properties:
       AccessControl: Private
       BucketName: !Ref S3InterestingDomainsBucketName
+
+  # SNS Topic to receive notification when matches are found
+  AlertOnMatchSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Ref SNStopicName
+
   # Lambda Function that will be invoked by Firehose and in turn will check if queried domain is interesting
   StreamInlineProcessingFunction:
     Type: AWS::Serverless::Function
@@ -103,9 +125,13 @@ Resources:
       Environment:
         Variables:
           INTERESTING_DOMAINS_TABLE: !Ref DDBInterestingDomainsTable
+          SNS_TOPIC: !Ref AlertOnMatchSNSTopic
+          SNS_ON: !Ref SNSinUse
       Policies:
       - DynamoDBCrudPolicy:
           TableName: !Ref DDBInterestingDomainsTable
+      - SNSPublishMessagePolicy:
+          TopicName: !Ref SNStopicName
       
   
   DeliveryStream:
@@ -200,7 +226,8 @@ Resources:
           Properties:
             Bucket: !Ref S3InterestingDomainsBucket
             Events: s3:ObjectCreated:*
-          
+
+
  
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
@@ -225,5 +252,8 @@ Outputs:
   S3InterestingDomainsBucketOutput:
     Description: "S3 Bucket that will be storing interesting list of domains"
     Value: !Ref S3InterestingDomainsBucket
+  AlertOnMatchSNSTopicARNOutput:
+    Description: "ARN of the SNS Topic that can be notified on matched queries"
+    Value: !Ref AlertOnMatchSNSTopic
   
   
