@@ -59,39 +59,15 @@ The application uses several AWS resources, including Lambda functions, DynamoDB
 
 ## Pre-requisites 
 
-####  SAM CLI
-The Serverless Application Model Command Line Interface (SAM CLI) is an extension of the AWS CLI that adds functionality for building and testing Lambda applications. 
+## Python
+This template uses Python 3.8. If you dont have Python 3.8 you can modify `template.yaml` and change the `Runtime` parameter for the 2 Lambda functions. 
 
-To use the SAM CLI, you need the following tools.
-
-* SAM CLI - [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
-* [Python 3 installed](https://www.python.org/downloads/)
 
 ## Deploy SAM  
 Once you have pre-requisites you can deploy the RT53 Resolver logging SAM application. The first command will build the source of the application.
 
 ```diff
 sam build 
-```
-
-Ouutput from build should look like this
-```diff
-# Building function 'StreamInlineProcessingFunction'
-# Running PythonPipBuilder:ResolveDependencies
-# Running PythonPipBuilder:CopySource
-# Building function 'ImportinterestingListFunc'
-# Running PythonPipBuilder:ResolveDependencies
-# Running PythonPipBuilder:CopySource
-
-+ Build Succeeded
-
-! Built Artifacts  : .aws-sam/build
-! Built Template   : .aws-sam/build/template.yaml
-
-! Commands you can use next
-! =========================
-! [*] Invoke Function: sam local invoke
-! [*] Deploy: sam deploy --guided
 ```
 
  The second command will package and deploy application to AWS, with a series of prompts:
@@ -116,7 +92,7 @@ sam deploy --guided
 | **StreamOutputCompressionFormat**|  Kinesis Firehose output formrmat | `GZIP` | 
 | **StreamBufferingInterval**|  Kinesis Firehose buffer interval in seconds | `60`| 
 | **StreamBufferSize**|  Kinesis Firehose buffer size in MB *[need to lower this one]* | `1` | 
-| **AlertOnMatchSNSTopic**| SNS Topic to send notification on matches | `dns-logs-match-topic` |
+| **SNStopicName**| SNS Topic to send notification on matches | `dns-logs-match-topic` |
 | **SNSinUse**| Turn on/off SNS Notifications | `Y` |
 | **Confirm changes before deploy**| If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.| `Y` |
 | **Allow SAM CLI IAM role creation**| This AWS SAM creates AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modified IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command. | `Y` |
