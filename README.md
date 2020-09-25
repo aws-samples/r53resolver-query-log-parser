@@ -59,7 +59,7 @@ The application uses several AWS resources, including Lambda functions, DynamoDB
 
 ## Pre-requisites 
 
-## Python
+### Python
 This template uses Python 3.8. If you dont have Python 3.8 you can modify `template.yaml` and change the `Runtime` parameter for the 2 Lambda functions. 
 
 
