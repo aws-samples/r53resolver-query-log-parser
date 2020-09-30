@@ -99,7 +99,7 @@ sam deploy --guided
 You can find output values displayed after deployment in AWS Console under Cloudformation Stacks.
 
 
-![alt text](https://github.com/spanningt/route53resolverLogging/raw/master/sam-output.png "SAM Output Values")
+![alt text](https://github.com/aws-samples/r53resolver-query-log-parser/blob/master/sam-output.png "SAM Output Values")
 
 
 ## Cleanup
