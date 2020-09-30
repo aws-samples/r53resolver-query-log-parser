@@ -42,9 +42,7 @@ This project has 4 main steps of the flow
 
 Architecture-Diagram:
 ---
-TODO > insert link to blog
-
-
+https://aws.amazon.com/blogs/networking-and-content-delivery/how-to-automatically-parse-route-53-resolver-query-logs
 
 
 ## Project components
@@ -67,16 +65,6 @@ This template uses Python 3.8. If you dont have Python 3.8 you can modify `templ
 ## Deploy SAM  
 Detailed steps for this project are outlined in blog: https://aws.amazon.com/blogs/networking-and-content-delivery/how-to-automatically-parse-route-53-resolver-query-logs 
 
-Once you have pre-requisites you can deploy the RT53 Resolver logging SAM application. The first command will build the source of the application.
-
-```diff
-sam build 
-```
-
- The second command will package and deploy application to AWS, with a series of prompts:
- ```diff
-sam deploy --guided
-```
 
 | Property                | Description           | Default Value  |
 | ----------------------- |---------------------| :--------------:|
