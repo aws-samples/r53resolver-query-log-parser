@@ -1,7 +1,8 @@
 # Route53 Resolver DNS Query Log Processor
+This project is part of blog: https://aws.amazon.com/blogs/networking-and-content-delivery/how-to-automatically-parse-route-53-resolver-query-logs
 
 ## About
-This project is intended to detect DNS queries to interesting domains using [Amazon Route 53](https://aws.amazon.com/route53/) Resolver DNS query logs. Project is packaged as [Serverless Application Module (SAM)](https://aws.amazon.com/serverless/sam/) . Route 53 Resolver logs contains information about the queries, such as the following:
+Project is intended to detect DNS queries to interesting domains using [Amazon Route 53](https://aws.amazon.com/route53/) Resolver DNS query logs. Project is packaged as [Serverless Application Module (SAM)](https://aws.amazon.com/serverless/sam/) . Route 53 Resolver logs contains information about the queries, such as the following:
 - Route 53 edge location that responded to the DNS query
 - Domain or subdomain that was requested
 - DNS record type, such as A or AAAA
@@ -64,6 +65,8 @@ This template uses Python 3.8. If you dont have Python 3.8 you can modify `templ
 
 
 ## Deploy SAM  
+Detailed steps for this project are outlined in blog: https://aws.amazon.com/blogs/networking-and-content-delivery/how-to-automatically-parse-route-53-resolver-query-logs 
+
 Once you have pre-requisites you can deploy the RT53 Resolver logging SAM application. The first command will build the source of the application.
 
 ```diff
@@ -87,8 +90,8 @@ sam deploy --guided
 | **StreamOutput3Prefix**|  Prefix for Kinesis Firehose Output | `dns-query-logs/!{timestamp:yyyy/MM/dd}` |
 | **StreamOutputErrorPrefix**|  Prefix for Kinesis Firehose Output, for errors | `delivery-failures/!{firehose:error-output-type}/!{timestamp:yyyy/MM/dd}` | 
 | **StreamOutputCompressionFormat**|  Kinesis Firehose output format - https://docs.aws.amazon.com/firehose/latest/dev/create-configure.html| `GZIP` | 
-| **StreamBufferingInterval**|  Kinesis Firehose buffer interval in seconds - https://docs.aws.amazon.com/firehose/latest/dev/create-configure.html | `60`| 
-| **StreamBufferSize**|  Kinesis Firehose buffer size in MB - https://docs.aws.amazon.com/firehose/latest/dev/create-configure.html | `1` | 
+| **StreamBufferingInterval**|  Kinesis Firehose buffer interval in seconds (how long Firehose waits before delivering data to S3), select interval of 60–900 seconds - https://docs.aws.amazon.com/firehose/latest/dev/create-configure.html | `60`| 
+| **StreamBufferSize**|  Kinesis Firehose buffer size in MB, choose a buffer in size of 1–128 MiBs - https://docs.aws.amazon.com/firehose/latest/dev/create-configure.html | `1` | 
 | **SNStopicName**| SNS Topic to send notification on matches | `dns-logs-match-topic` |
 | **SNSinUse**| Turn on/off SNS Notifications | `Y` |
 
@@ -97,9 +100,6 @@ You can find output values displayed after deployment in AWS Console under Cloud
 
 
 ![alt text](https://github.com/spanningt/route53resolverLogging/raw/master/sam-output.png "SAM Output Values")
-
-## Cost Estimates 
-We estimated that if Route53 Resolver logging is producing about 50-60 MB of data monthly, then running this solution would cost somewhere between $20 USD and $30 USD monthly. You will need to refine and create estimates to match the amount of data produced by your environment and AWS Region in which you operate the solution. 
 
 
 ## Cleanup
