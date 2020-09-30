@@ -1,13 +1,13 @@
 import json
 import boto3
 import os
-from boto3 import resource
-from tld import get_fld
 import urllib.request
-import gzip
 import base64
 import re
 import logging
+from boto3 import resource
+from tld import get_fld
+
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)

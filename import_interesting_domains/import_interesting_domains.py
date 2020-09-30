@@ -1,10 +1,10 @@
 import boto3
 import os
-from boto3 import resource
 import re
-from tld import get_fld
-from botocore.exceptions import ClientError
 import logging
+from boto3 import resource
+from tld import get_fld
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
