@@ -79,25 +79,18 @@ sam deploy --guided
 | ----------------------- |---------------------| :--------------:|
 | **Stack Name**          | The name of the stack to deploy to CloudFormation. | give it unique name          |
 | **AWS Region**| The AWS region you want to deploy your app to.| us-east-1 |
-| **DDBinterestingDomainsTable**| Name of DynamoDB Table to store list of interesting domain | `interesting-domains-table` |
-| **DDBTableRCU**| Read Capacity Units for Dynamo table *[need to lower this one]* |  `50` | 
-| **DDBTableWCU**| Wite Capacity Units for Dynamo table *[need to lower this one]* |   `50` | 
-| **S3interestingDomainsBucket**| S3 Bucket where interesting domains file is stored (see Pre-requisites section) | no default |
-| **S3interestingDomainsFilePath**|  Path to file containing maliciuous domains| `interesting_list_config/all_interesting_domains.txt` | 
-| **S3LogsOutputBucketName**|  S3 Bucket for Kinesis Firehose to output logs | `dns_logs_output` |
+| **DDBinterestingDomainsTable**| This is DynamoDB table that will hold list of interesting domain. Table will be populated by the `ImportInterestingDomainsListFunc` Lambda function. `StreamInlineProcessingFunction` Lambda function will check DNS log entries against entries in this table | `interesting-domains-table` |
+| **S3interestingDomainsBucket**| S3 Bucket where interesting domains file is stored | `interesting-domains-bucket` |
+| **S3DNSLogsBucketName**|  S3 Bucket for Kinesis Firehose to output logs | `dns-logs-output` |
 | **StreamProcessorMemorySize**| Inline Lambda function memory allocation | `256` |
-| **StreamProcessorTimeout**|  Inline Lambda function timeout | `120` |
+| **StreamProcessorTimeout**|  Inline Lambda function timeout in seconds | `120` |
 | **StreamOutput3Prefix**|  Prefix for Kinesis Firehose Output | `dns-query-logs/!{timestamp:yyyy/MM/dd}` |
 | **StreamOutputErrorPrefix**|  Prefix for Kinesis Firehose Output, for errors | `delivery-failures/!{firehose:error-output-type}/!{timestamp:yyyy/MM/dd}` | 
-| **StreamOutputCompressionFormat**|  Kinesis Firehose output formrmat | `GZIP` | 
-| **StreamBufferingInterval**|  Kinesis Firehose buffer interval in seconds | `60`| 
-| **StreamBufferSize**|  Kinesis Firehose buffer size in MB *[need to lower this one]* | `1` | 
+| **StreamOutputCompressionFormat**|  Kinesis Firehose output format - https://docs.aws.amazon.com/firehose/latest/dev/create-configure.html| `GZIP` | 
+| **StreamBufferingInterval**|  Kinesis Firehose buffer interval in seconds - https://docs.aws.amazon.com/firehose/latest/dev/create-configure.html | `60`| 
+| **StreamBufferSize**|  Kinesis Firehose buffer size in MB - https://docs.aws.amazon.com/firehose/latest/dev/create-configure.html | `1` | 
 | **SNStopicName**| SNS Topic to send notification on matches | `dns-logs-match-topic` |
 | **SNSinUse**| Turn on/off SNS Notifications | `Y` |
-| **Confirm changes before deploy**| If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.| `Y` |
-| **Allow SAM CLI IAM role creation**| This AWS SAM creates AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modified IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command. | `Y` |
-| **Save arguments to samconfig.toml**| If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.| `Y` |
-
 
 
 You can find output values displayed after deployment in AWS Console under Cloudformation Stacks.
@@ -106,38 +99,8 @@ You can find output values displayed after deployment in AWS Console under Cloud
 ![alt text](https://github.com/spanningt/route53resolverLogging/raw/master/sam-output.png "SAM Output Values")
 
 ## Cost Estimates 
-Estimates are performed in US EAST 2 (Ohio) Region. Following assumptions have been made
+We estimated that if Route53 Resolver logging is producing about 50-60 MB of data monthly, then running this solution would cost somewhere between $20 USD and $30 USD monthly. You will need to refine and create estimates to match the amount of data produced by your environment and AWS Region in which you operate the solution. 
 
-Kinesis Firehose:
-- 10 DNS quesries per second constant load for 24hr/7days. Thats 864,000 a day
-- each RT53 Resolver log record is ~2kb
-
-Lambda:
-- we assume that Firehose processes record every minute, so that translates to 1440 lambda invocations and we estimated ~10 seconds duration each  
-
-SNS
-- we estimated that .5% of all DNS requests will trigger a "match notification" via SNS. We rounded it to 200,000 a month
-
-S3 storage
-- we estimated rougly 54GB (864,000 records * 2kb * 30.5 days) of uncompressed files will go to S3 storage monthly
-
-Cost Estimate details for above components is here: https://calculator.aws/#/estimate?id=068f23b44b4dd551c297841a0fdaaf32ba17fed0
-
-DynamoDB
-- we estimated 26,352,000 reads (864,000 records a day * 30.5 days) and 1,000,000 writes (weekly 250,000 writes)
-```bash
-IMPORTANT: CloudFormation Template defaults to 50 Write and 50 Read Units. 
-```
-
-DynamoDB isn part of the estimate link above and estimated on-demand pricing cost would be:
-- Writes: $1.25 per million writes x .1 million writes = $1.25
-- Reads: $0.25 per million reads x 26.35 million reads = $6.58
-
-You can get more details how to calculate DynamoDB cost here: https://aws.amazon.com/dynamodb/pricing/on-demand/ 
-
-**Total monthly cost based on the above assumptions would be $17.02 USD**
-- $9.19 USD for Firehose, Lambda, SNS and S3
-- $7.83 USD for DynamoDB
 
 ## Cleanup
 

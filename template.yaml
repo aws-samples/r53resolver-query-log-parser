@@ -7,14 +7,6 @@ Parameters:
     Description: DynamoDB Table to store list of interesting domains
     Default: interesting-domains-table
     Type: String
-  DDBTableRCU:
-    Description: DynamoDB Table Read Capacity Units 
-    Type: Number
-    Default: 50
-  DDBTableWCU:
-    Description: DynamoDB Table Write Capacity Units 
-    Type: Number
-    Default: 50
   S3InterestingDomainsBucketName:
     Description: Name for the S3 bucket where you plan to deposit interesting domains file
     Type: String
@@ -91,9 +83,7 @@ Resources:
       PrimaryKey: 
         Name: domainName
         Type: String
-      ProvisionedThroughput: 
-        ReadCapacityUnits: !Ref DDBTableRCU
-        WriteCapacityUnits: !Ref DDBTableWCU
+      
   # S3 Bucket for storing list of interesting domains as well as for FH to store the logs
   DNSLogsDeliveryBucket:
     Type: AWS::S3::Bucket
