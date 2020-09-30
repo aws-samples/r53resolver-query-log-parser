@@ -36,12 +36,12 @@ Sample DNS log record:
 This project has 4 main steps of the flow
 1. S3 bucket that holds interesting domains file, AWS Lambda `import_interesting_domains/import_interesting_domains.py` which parses that file and then stores it in DynamoDB table  
 2. Route53 DNS logs will be ingested into Kinesis Firehose data stream 
-3. Using AWS Lambda (inline processing) `find_bad_domain/find_bad_domain.py` to check if DNS query was resolving to  interesting domain 
+3. Using AWS Lambda (inline processing) `stream_processor/stream_processor.py` to check if DNS query was resolving to  interesting domain 
 4. Output the modified DNS query reecords, indicating if queried DNS is interesting, to S3 bucket for further processing (i.e Athena)
 
 Architecture-Diagram:
 ---
-![alt text](https://github.com/spanningt/route53resolverLogging/raw/master/dnslogs-architecture.png "Architecture Diagram")
+TODO > insert link to blog
 
 
 
@@ -52,45 +52,22 @@ Project contains source code and supporting files for a serverless application t
 - DeliveryStream (Firehose) defined in template.yaml - this will be target for RT53 resolver to output the logs 
 - import_interesting_domains.py - Lambda function which imports names of 'bad' top level domains
 - find_bad_domain.py - Lambda function used by Kinesis Firehose to check if DNS loge entry (domain) is interesting or not
+- SNS Topic - to receive notification when matches are found
 - template.yaml - A Seerverless Application Module (SAM) template that defines the application's AWS resources.
 
-The application uses several AWS resources, including Lambda functions, DynamoDB table and Kinesis Firehose data stream. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
+The application uses several AWS resources, including Lambda functions, DynamoDB table, SNS Topic and Kinesis Firehose data stream. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
 
 ## Pre-requisites 
 
-####  SAM CLI
-The Serverless Application Model Command Line Interface (SAM CLI) is an extension of the AWS CLI that adds functionality for building and testing Lambda applications. 
+### Python
+This template uses Python 3.8. If you dont have Python 3.8 you can modify `template.yaml` and change the `Runtime` parameter for the 2 Lambda functions. 
 
-To use the SAM CLI, you need the following tools.
-
-* SAM CLI - [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
-* [Python 3 installed](https://www.python.org/downloads/)
 
 ## Deploy SAM  
 Once you have pre-requisites you can deploy the RT53 Resolver logging SAM application. The first command will build the source of the application.
 
 ```diff
 sam build 
-```
-
-Ouutput from build should look like this
-```diff
-# Building function 'StreamInlineProcessingFunction'
-# Running PythonPipBuilder:ResolveDependencies
-# Running PythonPipBuilder:CopySource
-# Building function 'ImportinterestingListFunc'
-# Running PythonPipBuilder:ResolveDependencies
-# Running PythonPipBuilder:CopySource
-
-+ Build Succeeded
-
-! Built Artifacts  : .aws-sam/build
-! Built Template   : .aws-sam/build/template.yaml
-
-! Commands you can use next
-! =========================
-! [*] Invoke Function: sam local invoke
-! [*] Deploy: sam deploy --guided
 ```
 
  The second command will package and deploy application to AWS, with a series of prompts:
@@ -115,6 +92,8 @@ sam deploy --guided
 | **StreamOutputCompressionFormat**|  Kinesis Firehose output formrmat | `GZIP` | 
 | **StreamBufferingInterval**|  Kinesis Firehose buffer interval in seconds | `60`| 
 | **StreamBufferSize**|  Kinesis Firehose buffer size in MB *[need to lower this one]* | `1` | 
+| **SNStopicName**| SNS Topic to send notification on matches | `dns-logs-match-topic` |
+| **SNSinUse**| Turn on/off SNS Notifications | `Y` |
 | **Confirm changes before deploy**| If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.| `Y` |
 | **Allow SAM CLI IAM role creation**| This AWS SAM creates AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modified IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command. | `Y` |
 | **Save arguments to samconfig.toml**| If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.| `Y` |
@@ -126,103 +105,39 @@ You can find output values displayed after deployment in AWS Console under Cloud
 
 ![alt text](https://github.com/spanningt/route53resolverLogging/raw/master/sam-output.png "SAM Output Values")
 
-#### Malicous Domains List
-This SAM will create S3 bucket (bucket will be named based on parameter `S3interestingDomainsBucketName`). You will need to store the file with list of interesting domains in that bucket. Once you drop the file into S3, lambda function will be triggered automatically and it will parse the file and store the interesting domains into DynamoDB table as defined in `template.yaml` parameter `DDBinterestingDomainsTable`
+## Cost Estimates 
+Estimates are performed in US EAST 2 (Ohio) Region. Following assumptions have been made
 
-For this sample application we obtained list of interesting domain from [curated list of awesome Threat Intelligence resources](https://github.com/hslatman/awesome-threat-intelligence). For the testing we used https://www.malwaredomainlist.com/mdl.php
-      
-> Optional: You can also modify `import_interesting_domains` Lambda function to download the file from location other than S3. i.e using CURL or similar. 
+Kinesis Firehose:
+- 10 DNS quesries per second constant load for 24hr/7days. Thats 864,000 a day
+- each RT53 Resolver log record is ~2kb
 
-If file format that you are using isnt compatible with one we used you will need to modify `import_interesting_domains`
+Lambda:
+- we assume that Firehose processes record every minute, so that translates to 1440 lambda invocations and we estimated ~10 seconds duration each  
 
-## Populate `interesting-domains` DynamoDB Table
+SNS
+- we estimated that .5% of all DNS requests will trigger a "match notification" via SNS. We rounded it to 200,000 a month
 
-Navigate to AWS Console and go to Lamba. Find *ImportinterestingListFunctionOutput* Lambda function it will be named `cfnStackName-ImportinterestingListFunc-XXXXXXXXX`
+S3 storage
+- we estimated rougly 54GB (864,000 records * 2kb * 30.5 days) of uncompressed files will go to S3 storage monthly
 
-> Note: before you run Lambda function you MUST complete pre-requisite section as described under *Malicous Domains List* section
+Cost Estimate details for above components is here: https://calculator.aws/#/estimate?id=068f23b44b4dd551c297841a0fdaaf32ba17fed0
 
-Once *ImportinterestingListFunctionOutput* has completed, navigate to DynamoDB console. Find `interesting-domains-table` table and make sure that in fact it has been populated with data.
-
-## Create DNS Resolver Logs and send them to Kinesis Firehose
-To send Route 53 Resolver DNS quesry logs to Kinesis Firehose requires two steps. creation of resolver log configuration and
-
-#### Create Resolver Log Config
-Resolver query logging configuration, defines where you want Resolver to save DNS query logs that originate in your VPCs. Resolver can log queries only for VPCs that are in the same Region as the query logging configuration. Start by creating a config file i.e. `logging-kinesis-config.json` that looks like one below. Replace `DestinationArn` with value of your own Kinesis Firehose stream. You can get the value from Cloudformation output section or from Kinesis Firehose console.
-
-```json logging-kinesis-config.json
-{
-      "CreatorRequestId": "2020-07-11-17:30",
-      "DestinationArn": "arn:aws:firehose:us-east-1:999999999999:deliverystream/cfnStackName-DeliveryStream-XXXXXXXXXXXX",
-      "Name": "logging-beta-kinesis"
-}
-```
-
-Next you will use AWS CLI to create Route53 Resolver log config. Open your terminal/command prompt and run
-
-```bash 
-aws route53resolver create-resolver-query-log-config --cli-input-json  file://logging-kinesis-config.json --region us-east-1
-```
-
-Output after successufull Route53 Resolver log config will looks something like below 
-```json
-{
-    "ResolverQueryLogConfig": {
-        "Id": "rqlc-XXXXXXXXXXXX",
-        "OwnerId": "999999999999",
-        "Status": "CREATING",
-        "ShareStatus": "NOT_SHARED",
-        "AssociationCount": 0,
-        "Arn": "arn:aws:route53resolver:us-east-1:999999999999:resolver-query-log-config/rqlc-XXXXXXXXXXXX",
-        "Name": "logging-beta-kinesis",
-        "DestinationArn": "arn:aws:firehose:us-east-1:999999999999:deliverystream/cfnStackName-DeliveryStream-XXXXXXXXXXXX",
-        "CreatorRequestId": "2020-07-11-17:30",
-        "CreationTime": "2020-07-26T16:19:14.215Z"
-    }
-}
-```
-
-
-#### Associate Resolver Config with VPC
-Next step is to associates an Amazon VPC with previously createdquery logging configuration. Route 53 Resolver logs DNS queries that originate in all of the Amazon VPCs that are associated with a specified query logging configuration. To associate more than one VPC with a configuration, submit one
-*AssociateResolverQueryLogConfig*  request for each VPC.
-
-Here is sample `associate-config.json` file, replace *ResolverQueryLogConfigId* with value of resolver config you created in previous step and *ResourceId* with your own VPC id:
-```json
-{
-   "ResolverQueryLogConfigId": "rqlc-XXXXXXXXXXXX", 
-   "ResourceId": "vpc-XXXXXXXXXXX"
-}
-```
-
-Next you will use AWS CLI to associate Route53 Resolver log config with VPC. Open your terminal/command prompt and run
+DynamoDB
+- we estimated 26,352,000 reads (864,000 records a day * 30.5 days) and 1,000,000 writes (weekly 250,000 writes)
 ```bash
-aws route53resolver associate-resolver-query-log-config --cli-input-json  file://associate-config.json --region us-east-1
+IMPORTANT: CloudFormation Template defaults to 50 Write and 50 Read Units. 
 ```
 
+DynamoDB isn part of the estimate link above and estimated on-demand pricing cost would be:
+- Writes: $1.25 per million writes x .1 million writes = $1.25
+- Reads: $0.25 per million reads x 26.35 million reads = $6.58
 
-Output after successufull association of resolver config and VPC will look something like below 
-```json
-{
-    "ResolverQueryLogConfigAssociation": {
-        "Id": "rqlca-ZZZZZZZZZZZ",
-        "ResolverQueryLogConfigId": "rqlc-XXXXXXXXXXX",
-        "ResourceId": "vpc-XXXXXXXXXXX",
-        "Status": "CREATING",
-        "Error": "NONE",
-        "ErrorMessage": "",
-        "CreationTime": "2020-07-26T16:39:29.418Z"
-    }
-}
-```
+You can get more details how to calculate DynamoDB cost here: https://aws.amazon.com/dynamodb/pricing/on-demand/ 
 
-## Validate Output
-The application template uses AWS Serv
-
-## Analyze using Athena or other prefered service (not part of SAM template)
-
-## Add a resource to your application
-The application template uses AWS Serverless Application Model (AWS SAM) to define application resources. AWS SAM is an extension of AWS CloudFormation with a simpler syntax for configuring common serverless application resources such as functions, triggers, and APIs. For resources not included in [the SAM specification](https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md), you can use standard [AWS CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-template-resource-type-ref.html) resource types.
-
+**Total monthly cost based on the above assumptions would be $17.02 USD**
+- $9.19 USD for Firehose, Lambda, SNS and S3
+- $7.83 USD for DynamoDB
 
 ## Cleanup
 
