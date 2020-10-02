@@ -68,14 +68,26 @@ This template uses Python 3.8. If you dont have Python 3.8 you can modify `templ
 ## Deploy SAM  
 Detailed steps for this project are outlined in blog: https://aws.amazon.com/blogs/networking-and-content-delivery/how-to-automatically-parse-route-53-resolver-query-logs 
 
+To build project:
+```
+sam build
+```
+
+To deploy project:
+```
+sam deploy --guided
+```
+
+You will be promted for parameter values. Below table explains their purpouse.
+
 
 | Property                | Description           | Default Value  |
 | ----------------------- |---------------------| :--------------:|
 | **Stack Name**          | The name of the stack to deploy to CloudFormation. | give it unique name          |
 | **AWS Region**| The AWS region you want to deploy your app to.| us-east-1 |
-| **DDBinterestingDomainsTable**| This is DynamoDB table that will hold list of interesting domain. Table will be populated by the `ImportInterestingDomainsListFunc` Lambda function. `StreamInlineProcessingFunction` Lambda function will check DNS log entries against entries in this table | `interesting-domains-table` |
-| **S3interestingDomainsBucket**| S3 Bucket where interesting domains file is stored | `interesting-domains-bucket` |
-| **S3DNSLogsBucketName**|  S3 Bucket for Kinesis Firehose to output logs | `dns-logs-output` |
+| **DDBinterestingDomainsTable**| Name of DynamoDB table that will hold list of interesting domain. Table will be populated by the `ImportInterestingDomainsListFunc` Lambda function. `StreamInlineProcessingFunction` Lambda function will check DNS log entries against entries in this table | `interesting-domains-table` |
+| **S3interestingDomainsBucket**| YOU MUST CHANGE THIS. S3 Bucket where interesting domains file is stored | `interesting-domains-bucket` |
+| **S3DNSLogsBucketName**|  YOU MUST CHANGE THIS. S3 Bucket for Kinesis Firehose to output logs | `dns-logs-output` |
 | **StreamProcessorMemorySize**| Inline Lambda function memory allocation | `256` |
 | **StreamProcessorTimeout**|  Inline Lambda function timeout in seconds | `120` |
 | **StreamOutput3Prefix**|  Prefix for Kinesis Firehose Output | `dns-query-logs/!{timestamp:yyyy/MM/dd}` |
