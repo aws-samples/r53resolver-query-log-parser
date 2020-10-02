@@ -11,25 +11,28 @@ Project is intended to detect DNS queries to interesting domains using [Amazon R
 Sample DNS log record:
 ```json
 {
-      "version":"1.000000",
-      "account_id":"99999999999",
-      "region":"us-east-1",
-      "vpc_id":"vpc-h456k56s57w78e76",
-      "query_timestamp":"2020-05-22T03:25:36Z",
-      "query_name":"223.0.2.1.in-addr.arpa.",
-      "query_type":"PTR",
-      "query_class":"IN",
-      "rcode":"NOERROR",
-      "answers":[{
-            "Address":"ip-7-7-7-223.ec2.internal. ",
-            "Type":"PTR",
-            "Class":"IN"
-      }],
-      "srcaddr":"9.9.9.70",
-      "srcport":"60306",
-      "srcids":[
-            "i-0f19ert0572c3c54a"
-      ]
+     “version” : “1.000000",
+     “account_id” : “99999999999",
+     “region” : “us-east-1",
+     “vpc_id” : “vpc-example”,
+     “query_timestamp” : “2020-05-22T03:25:36Z”,
+     “query_name” : “example.org”,
+     “query_type” : “A”,
+     “query_class” : “IN”,
+     “rcode” : “NOERROR”,
+     “answers” : [
+        {
+           “Rdata” : “203.0.113.10”,
+           “Type” : “A”,
+           “Class” : “IN”
+         }
+      ],
+     “srcaddr” : “10.1.1.14”,
+     “srcport” : “60306”,
+     “transport” : “UDP”,
+     “srcids” : {
+           “i-0f19ert0572c3c54a”
+     }
 }
 ```
 
@@ -79,7 +82,7 @@ Detailed steps for this project are outlined in blog: https://aws.amazon.com/blo
 | **StreamOutputErrorPrefix**|  Prefix for Kinesis Firehose Output, for errors | `delivery-failures/!{firehose:error-output-type}/!{timestamp:yyyy/MM/dd}` | 
 | **StreamOutputCompressionFormat**|  Kinesis Firehose output format - https://docs.aws.amazon.com/firehose/latest/dev/create-configure.html| `GZIP` | 
 | **StreamBufferingInterval**|  Kinesis Firehose buffer interval in seconds (how long Firehose waits before delivering data to S3), select interval of 60–900 seconds - https://docs.aws.amazon.com/firehose/latest/dev/create-configure.html | `60`| 
-| **StreamBufferSize**|  Kinesis Firehose buffer size in MB, choose a buffer in size of 1–128 MiBs - https://docs.aws.amazon.com/firehose/latest/dev/create-configure.html | `1` | 
+| **StreamBufferSize**|  Kinesis Firehose buffer size in MB. We recomend that you keep this value low as logs will be compresed and processed by Lambda. Lambda has Invocation Limit of 6MB for Request/Response: https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html. Limits for Kinesis Firehose: https://docs.aws.amazon.com/firehose/latest/dev/create-configure.html | `1` | 
 | **SNStopicName**| SNS Topic to send notification on matches | `dns-logs-match-topic` |
 | **SNSinUse**| Turn on/off SNS Notifications | `Y` |
 

@@ -27,7 +27,7 @@ def is_interesting_domain( record ):
   isMatchedDomain = "N"
   ddbSearchField = 'domainName'
 
-  recordValue = json.loads(record.get('message'))
+  recordValue = record
   # preset interesting to N
   recordValue["isMatchedDomain"] = isMatchedDomain
 
